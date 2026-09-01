@@ -1,0 +1,5 @@
+[2026-08-31 17:27:43] [INFO   ] [excel_processing] Convertido 'test_inv.xls' via xlrd (sin COM) -> ~xlrd_test_inv_172743.xlsx
+[2026-08-31 17:27:57] [INFO   ] [excel_processing] Convertido 'test_inv.xls' via xlrd (sin COM) -> ~xlrd_test_inv_172757.xlsx
+[2026-08-31 17:29:02] [INFO   ] [excel_processing] Convertido 'test_inv.xls' via xlrd (sin COM) -> ~xlrd_test_inv_172902.xlsx
+[2026-08-31 17:29:02] [WARNING] [excel_processing] Era .xls BIFF? No con xlrd (Unsupported format, or corrupt file: Expected BOF record; found b'<html><b'); probando como tabla HTML...
+[2026-08-31 17:29:03] [INFO   ] [excel_processing] Convertido 'test_html.xls' via read_html (sin COM) -> ~xlrd_test_html_172903.xlsx

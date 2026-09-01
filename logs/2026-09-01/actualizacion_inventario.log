@@ -1,0 +1,16 @@
+[2026-09-01 11:18:10] [INFO   ] [actualizacion_inventario]   Descifrado con 'Compras2028' -> ~dec_$2026 INVENTARIO GENERAL ACTUALIZADO 20260828_1535_111810.xlsx
+[2026-09-01 11:18:13] [INFO   ] [actualizacion_inventario]   Descifrado con 'Compras2028' -> ~dec_$2026 INVENTARIO GENERAL ACTUALIZADO 20260828_1535_111813.xlsx
+[2026-09-01 11:18:42] [INFO   ] [actualizacion_inventario]   Candidatos encontrados:
+[2026-09-01 11:18:42] [INFO   ] [actualizacion_inventario]      1. $2026 INVENTARIO GENERAL ACTUALIZADO 20260828_1535.xlsx (modificado: 2026-08-28 09:36:11)
+[2026-09-01 11:18:42] [INFO   ] [actualizacion_inventario]   Seleccionado: $2026 INVENTARIO GENERAL ACTUALIZADO 20260828_1535.xlsx
+[2026-09-01 11:21:51] [INFO   ] [actualizacion_inventario]   Descifrado con 'Compras2028' -> ~dec_$2026 INVENTARIO GENERAL ACTUALIZADO 20260828_1535_112151.xlsx
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario] Eliminacion de registros LINEA COPIA indeterminada...
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Columna de referencia: REFERENCIA
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Columna de LINEA COPIA: LINEA COPIA
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Total registros: 15420
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Total en idx_ref: 15401
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Paso 1: Eliminar registros con referencia duplicada en INVENTARIO COPIA
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Eliminadas: 13 registros duplicados
+[2026-09-01 11:21:58] [INFO   ] [actualizacion_inventario]   Paso 2: Eliminar INVENTARIO GENERAL con referencia a no existe en INVENTARIO COPIA
+[2026-09-01 11:22:01] [INFO   ] [actualizacion_inventario] Procesando existencias negativas y cero...
+[2026-09-01 11:22:01] [INFO   ] [actualizacion_inventario]   Negativas: 0, Ceros: 8798

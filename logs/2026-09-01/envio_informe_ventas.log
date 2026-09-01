@@ -1,0 +1,44 @@
+[2026-09-01 15:07:57] [INFO   ] [envio_informe_ventas] ⏳ Abriendo Excel:  VENTAS_2026-09-01.xlsx
+[2026-09-01 15:07:57] [INFO   ] [envio_informe_ventas] ✗ Error general en Excel: (-2147352567, 'Exception occurred.', (0, 'Microsoft Excel', "Sorry, we couldn't find Archivos Validacion/ VENTAS_2026-09-01.xlsx. Is it possible it was moved, renamed or deleted?", 'xlmain11.chm', 0, -2146827284), None)
+[2026-09-01 15:08:31] [INFO   ] [envio_informe_ventas] ⏳ Abriendo Excel: $2026 VENTAS_2026-09-01.xlsx
+[2026-09-01 15:08:44] [INFO   ] [envio_informe_ventas] ✓ Excel abierto correctamente
+[2026-09-01 15:08:44] [INFO   ] [envio_informe_ventas] ⏳ Esperando 30 segundos para carga completa...
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas] ✓ Espera completada
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas] 
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas] 📸 CAPTURA 1/4: VTA DIA
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    🗓️ Aplicando filtro de mes actual...
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    🗓️ Filtrando tabla dinámica por mes: SEPTIEMBRE
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    📊 Tabla dinámica encontrada: Tabla dinámica1
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    ✓ Campo MES encontrado en PageFields: 'MES'
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    🎯 Aplicando filtro: 'SEPTIEMBRE'
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    ⚠️ CurrentPage falló: (-2147352567, 'Exception occurred.', (0, None, None, None, 0, -2146827284), None)
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    ❌ No se encontró 'SEPTIEMBRE' en los items: ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO']
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    ⚠️ No se pudo aplicar filtro de mes, continuando...
+[2026-09-01 15:09:14] [INFO   ] [envio_informe_ventas]    🔄 Actualizando tabla dinámica de 'Resumen Dia'...
+[2026-09-01 15:09:20] [INFO   ] [envio_informe_ventas]    ✓ Tabla(s) dinámica(s) actualizada(s) correctamente
+[2026-09-01 15:09:20] [INFO   ] [envio_informe_ventas] ✓ Factor MG NETO extraído: 24,36%
+[2026-09-01 15:09:20] [INFO   ] [envio_informe_ventas]    🙈 Buscando columna 'Promedio de MARGEN NETO' para ocultar...
+[2026-09-01 15:09:20] [INFO   ] [envio_informe_ventas]    ⚠️ No se encontró la columna 'Promedio de MARGEN NETO'
+[2026-09-01 15:09:20] [INFO   ] [envio_informe_ventas] ⏳ Capturando rango: A9:D35 de hoja 'Resumen Dia'
+[2026-09-01 15:09:23] [INFO   ] [envio_informe_ventas] ✓ Captura guardada: C:\Users\ctorres\Documents\projects\Generacion de Insumos\Img informe\foto1_vta_dia.png
+[2026-09-01 15:09:23] [INFO   ] [envio_informe_ventas] 
+[2026-09-01 15:09:23] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:23] [INFO   ] [envio_informe_ventas] 📸 CAPTURA 2/4: RESUMEN MES
+[2026-09-01 15:09:23] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:24] [INFO   ] [envio_informe_ventas] ⏳ Capturando rango: A11:G20 de hoja 'Resum Mes'
+[2026-09-01 15:09:26] [INFO   ] [envio_informe_ventas] ✓ Captura guardada: C:\Users\ctorres\Documents\projects\Generacion de Insumos\Img informe\foto2_resumen_mes.png
+[2026-09-01 15:09:26] [INFO   ] [envio_informe_ventas] 
+[2026-09-01 15:09:26] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:26] [INFO   ] [envio_informe_ventas] 📸 CAPTURA 3/4: RESUMEN META
+[2026-09-01 15:09:26] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:27] [INFO   ] [envio_informe_ventas] ⏳ Capturando rango: A1:R14 de hoja 'Resumen Meta 2026'
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] ✓ Captura guardada: C:\Users\ctorres\Documents\projects\Generacion de Insumos\Img informe\foto3_resumen_meta.png
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] 
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] 📸 CAPTURA 4/4: RESUMEN DIA POR VENDEDOR
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] ======================================================================
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] ✗ Error al capturar RESUMEN DIA POR VENDEDOR: (-2147352567, 'Exception occurred.', (0, None, None, None, 0, -2147352565), None)
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] 
+[2026-09-01 15:09:29] [INFO   ] [envio_informe_ventas] ✓ Cerrando Excel...

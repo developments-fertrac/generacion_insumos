@@ -1,0 +1,4 @@
+[2026-08-25 18:48:27] [INFO   ] [excel_utils] '$$2026 VENTAS.xlsx' desencriptado con contrasena 'Compras2028'
+[2026-08-25 18:48:53] [INFO   ] [excel_utils] '$2026 INVENTARIO GENERAL.xlsx' desencriptado con contrasena 'Compras2028'
+[2026-08-25 18:48:55] [INFO   ] [excel_utils] '$2026 INVENTARIO MYR EXISTENCIA 25 AGOSTO.xlsx' desencriptado con contrasena 'Compras2028'
+[2026-08-25 18:49:04] [INFO   ] [excel_utils] 'MATRIZ COMPLETA DE CLIENTES.xlsx' no esta protegido, se lee sin contrasena
