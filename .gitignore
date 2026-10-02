@@ -1,0 +1,67 @@
+# === Secretos ===
+.env
+*.pem
+*.key
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# === Entorno virtual ===
+venv/
+env/
+.venv/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === Estado operativo (Phase 0: vive fuera del repo) ===
+# Logs
+logs/
+*.log
+# Perfiles de navegador / sesiones (WhatsApp Web)
+chrome_profile_*/
+# Cache de webdriver-manager
+.wdm/
+.wdm_cache/
+# Screenshots de error
+errorImages/
+# Binarios de driver
+chromedriver.exe
+chromedriver.exe.bak
+chromedriver
+# Salidas de imagenes del informe
+Img informe/
+# Grafo de conocimiento / herramientas auxiliares
+graphify-out/
+
+# === Temporales ===
+*.tmp
+*.crdownload
+resultado_envio_informe_ventas.txt
+
+# === Datos de negocio: nunca versionar ===
+# Set de validacion local (se congela por escenario en tests/golden/<escenario>/inputs en Fase 2)
+Archivos Validacion/
+# Archivos de produccion descargados del ERP
+*.xlsb
+*.xlsx
+*.xlsm
+*.xls
+!tests/golden/**/expected/*.parquet
+
+# Material retirado (ADR 0008), pendiente de borrar a mano
+_obsoleto_*/

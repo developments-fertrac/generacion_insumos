@@ -1,0 +1,20 @@
+# Pipeline sobre la exportacion de base de datos (Inventario.xlsx).
+#
+# La base de datos ya resta faltantes/impo/aforo y clasifica cada referencia
+# (columna MOTIVO). Aqui solo se aplica el criterio de negocio acordado.
+# Gobierno: un PR que toque este archivo requiere aprobacion del responsable
+# de negocio de inventario, ademas de la revision tecnica.
+
+pipeline: inventario_bd
+version: 2026.10.2
+
+rules:
+  - id: inv.validar_columnas_bd
+  - id: inv.filtrar_motivo_inventario
+    params: { prefijo: INVENTARIO }
+  - id: inv.eliminar_referencias_duplicadas
+  - id: inv.costo_cero_sin_existencia
+    params:
+      col_existencia: EXISTENCIA NETA
+      col_costo: COSTO
+      col_total: TOTAL INV

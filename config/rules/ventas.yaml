@@ -1,0 +1,19 @@
+# Pipeline de reglas de VENTAS
+#
+# ESTADO: Fase 0 (placeholder). Se puebla en Fase 4.
+# Mismas reglas de contrato y de gobierno que config/rules/inventario.yaml,
+# incluida la proteccion en codigo contra pipelines vacios (allow_empty).
+
+pipeline: ventas
+version: 2026.10.0
+
+rules: []
+# Orden previsto (Fase 4, segun seccion 5.2 del plan):
+#   - ven.normalizar_columnas
+#   - ven.normalizar_dctos
+#   - ven.ordenar_y_fechas
+#   - ven.integrar_linea_sublinea
+#   - ven.integrar_costo_factor_hoy
+#   - ven.limpiar_linea_referencias_invalidas
+#   - ven.validar_sublinea_en_cero
+#   - ven.validar_esquema_salida

@@ -1,0 +1,53 @@
+# Configuracion EXCLUSIVA del ratchet de tipos sobre el codigo legacy.
+#
+# NO la uses para "dar el codigo por bueno": el legacy tiene errores de tipos
+# conocidos y este archivo existe para CONTARLOS, no para corregirlos.
+#
+# Para el codigo nuevo (src/, tests/) manda [tool.mypy] en pyproject.toml.
+#
+# Uso:  python scripts/ratchet_types.py            (compara con la linea base)
+#       python scripts/ratchet_types.py --update   (re-linea la base)
+#
+# Este archivo desaparece con el legacy, en la Fase 5.
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "."
+
+files = [
+    "tasks",
+    "core",
+    "config",
+    "orchestrator.py",
+    "run.py",
+    # limpiar.py: eliminado por decision del equipo (limpieza de una tarea que ya
+    # no se usa). Si vuelve a aparecer, agregalo de nuevo aqui y re-linea la base.
+]
+
+# Ajustes laxos: los errores que cuentan son los reales, no la falta de
+# anotaciones. El legacy se tipa en modo gradual mientras se migra.
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+check_untyped_defs = false
+warn_return_any = false
+warn_unreachable = false
+no_implicit_optional = true
+strict_equality = true
+
+# Sin esto el conteo no seria reproducible: los errores "de codigo" se mezclarian
+# con los de "me falta la libreria de stubs".
+[[tool.mypy.overrides]]
+module = [
+    "win32com.*",
+    "win32clipboard.*",
+    "pythoncom.*",
+    "selenium.*",
+    "openpyxl.*",
+    "msoffcrypto.*",
+    "xlrd.*",
+    "fitz.*",
+    "PIL.*",
+    "dateutil.*",
+]
+ignore_missing_imports = true

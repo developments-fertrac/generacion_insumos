@@ -1,0 +1,76 @@
+# import-linter: verificacion automatica de la regla de dependencia hexagonal.
+#
+# Sintaxis INI: los contratos se declaran como [importlinter:contract:N].
+#
+# Los contratos fallan si el dominio (o cualquier capa interna) llega a importar
+# infraestructura. Es la red de seguridad que bloquea el merge cuando alguien
+# rompe la arquitectura.
+#
+# Ejecutar: uv run lint-imports
+
+[importlinter]
+root_package = insumos
+# Necesario para que los contratos puedan prohibir modulos externos
+# (win32com, selenium, openpyxl, msoffcrypto).
+include_external_packages = True
+
+# --- 1. La capa superior depende de la inferior, nunca al reves ---
+[importlinter:contract:1]
+name = Capas: adapters -> application -> domain
+type = layers
+layers =
+    insumos.adapters
+    insumos.application
+    insumos.domain
+
+# --- 2. El dominio no depende de las capas superiores ---
+[importlinter:contract:2]
+name = Dominio aislado: no importa application ni adapters
+type = forbidden
+source_modules =
+    insumos.domain
+forbidden_modules =
+    insumos.application
+    insumos.adapters
+
+# --- 3. El dominio no importa infraestructura ---
+[importlinter:contract:3]
+name = Dominio sin win32com / selenium / openpyxl / msoffcrypto
+type = forbidden
+source_modules =
+    insumos.domain
+forbidden_modules =
+    win32com
+    win32clipboard
+    pythoncom
+    selenium
+    openpyxl
+    msoffcrypto
+    xlsxwriter
+
+# --- 4. La aplicacion no toca la infraestructura concreta ---
+[importlinter:contract:4]
+name = Aplicacion sin win32com / selenium / openpyxl / msoffcrypto
+type = forbidden
+source_modules =
+    insumos.application
+forbidden_modules =
+    win32com
+    win32clipboard
+    pythoncom
+    selenium
+    openpyxl
+    msoffcrypto
+
+# --- 5. El codigo legacy no puede invadir el nucleo nuevo ---
+[importlinter:contract:5]
+name = El dominio no importa el legacy (tasks, core, config, orchestrator)
+type = forbidden
+source_modules =
+    insumos.domain
+    insumos.application
+forbidden_modules =
+    tasks
+    core
+    config
+    orchestrator

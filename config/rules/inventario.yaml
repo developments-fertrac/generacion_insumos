@@ -1,0 +1,31 @@
+# Pipeline de INVENTARIO GENERAL: actualiza la plantilla con la base de datos.
+#
+# Entrada: hoja INVENTARIO de la plantilla (ultima salida o maestro).
+# Contexto: inventario de base de datos ya filtrado (inventario_bd.yaml),
+#           Matriz USD y Distribucion de matrices.
+#
+# Contrato de una entrada:
+#   id:      <dominio>.<verbo>_<objeto>   (estable una vez en produccion)
+#   enabled: false = la regla se documenta pero no se ejecuta
+#   params:  parametros de la regla, leidos por el registro
+#
+# Gobierno: un PR que toque este archivo requiere aprobacion del
+# responsable de negocio de inventario, ademas de la revision tecnica.
+
+pipeline: inventario_general
+version: 2026.10.2
+
+rules:
+  - id: inv.eliminar_referencias_duplicadas
+  - id: inv.eliminar_ausentes_en_bd
+  - id: inv.actualizar_desde_bd
+  - id: inv.agregar_referencias_nuevas_bd
+  - id: inv.calcular_nombre_lista_y_myr
+  - id: inv.completar_campos_faltantes
+  - id: inv.costo_cero_sin_existencia
+    params:
+      col_existencia: EXISTENCIA
+      col_costo: COSTO PROMEDIO
+      col_total: TOTAL INV
+  - id: inv.ordenar_por_total_inv
+  - id: inv.validar_salida

@@ -1,0 +1,14 @@
+# Normalizacion de fin de linea (Windows host)
+* text=auto
+
+*.py   text diff=python
+*.md   text
+*.yaml text
+*.yml  text
+*.toml text
+*.txt  text
+
+# Binarios que si se versionan
+*.docx binary
+*.7z   binary
+*.exe  binary
