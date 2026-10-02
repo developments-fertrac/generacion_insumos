@@ -1,4 +1,0 @@
-[2026-08-31 12:13:09] [INFO   ] [browser] Modo sin ventana activado
-[2026-08-31 12:14:51] [WARNING] [browser] No se pudo instalar ChromeDriver 151: ChromeDriverManager.__init__() got an unexpected keyword argument 'version'
-[2026-08-31 12:14:56] [INFO   ] [browser] Modo sin ventana activado
-[2026-08-31 12:15:26] [INFO   ] [browser] Modo sin ventana activado

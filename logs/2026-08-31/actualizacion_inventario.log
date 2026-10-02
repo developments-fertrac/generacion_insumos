@@ -1,6 +1,0 @@
-[2026-08-31 15:33:21] [INFO   ] [actualizacion_inventario]   [OK] Coincidencia EXACTA encontrada: MARCAS.xlsx
-[2026-08-31 15:33:21] [INFO   ] [actualizacion_inventario] Abriendo: MARCAS.xlsx
-[2026-08-31 16:07:28] [INFO   ] [actualizacion_inventario] Auto-deteccion de cabecera no disponible: log() takes 1 positional argument but 4 were given
-[2026-08-31 16:07:57] [INFO   ] [actualizacion_inventario] Auto-deteccion de cabecera: fila 4 contiene 'Referencia'. Lectura previa uso fila 1, actualizando a fila 4.
-[2026-08-31 17:27:57] [INFO   ] [actualizacion_inventario] Auto-deteccion de cabecera: fila 2 contiene 'Referencia'. Lectura previa uso fila 0, actualizando a fila 2.
-[2026-08-31 17:29:02] [INFO   ] [actualizacion_inventario] Auto-deteccion de cabecera: fila 2 contiene 'Referencia'. Lectura previa uso fila 0, actualizando a fila 2.
