@@ -118,14 +118,14 @@ class FuenteInventarioArchivos:
         return list(self._fuentes)
 
     def _registrar(self, dato: str, ruta: Path | None) -> None:
-        from datetime import date, datetime
+        from insumos.adapters.system.reloj import desde_timestamp, hoy
 
         if ruta is None:
             self._fuentes.append({"DATO": dato, "ARCHIVO": "(no encontrado)", "FECHA MODIFICACION": "",
                                   "ADVERTENCIA": "ARCHIVO NO ENCONTRADO"})
             return
-        modificado = datetime.fromtimestamp(ruta.stat().st_mtime)
-        dias = (date.today() - modificado.date()).days
+        modificado = desde_timestamp(ruta.stat().st_mtime)
+        dias = (hoy() - modificado.date()).days
         advertencia = (
             f"ARCHIVO NO ES DE HOY (tiene {dias} dia(s) de antiguedad)" if dias > 0 else ""
         )

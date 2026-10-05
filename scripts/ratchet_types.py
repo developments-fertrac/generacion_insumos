@@ -3,7 +3,7 @@
 Que hace
 --------
 `mypy` sobre `src/` y `tests/` exige cero errores. Para el legacy eso no es
-factible hoy (117 errores, sobre todo `WebDriver | None` de Selenium), asi que
+factible todavia (12 errores al 2026-10-05; la base vive en quality-baseline.json), asi que
 en vez de ignorarlo se lo mide: este script cuenta los errores y falla si el
 numero **sube**.
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import socket
 import smtplib
 import ssl
-from datetime import datetime
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -11,7 +10,7 @@ from email import encoders
 from pathlib import Path
 
 from config.settings import SmtpConfig
-from core.logger import get_logger
+from core.logger import _now, get_logger
 
 
 class EmailNotifier:
@@ -65,7 +64,7 @@ class EmailNotifier:
             server.send_message(msg)
 
     def notify_success(self, detail: str, attachment: Path | None = None) -> bool:
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        fecha = _now().strftime("%d/%m/%Y %H:%M:%S")  # hora Colombia
         subject = f"[OK] {self.task_name} - Completado {fecha}"
         html = f"""
         <html><body style="font-family:Arial,sans-serif;">
@@ -81,7 +80,7 @@ class EmailNotifier:
         return self.send(subject, html, attachment)
 
     def notify_failure(self, error: str, attachment: Path | None = None) -> bool:
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        fecha = _now().strftime("%d/%m/%Y %H:%M:%S")  # hora Colombia
         subject = f"[ERROR] {self.task_name} - Error {fecha}"
         html = f"""
         <html><body style="font-family:Arial,sans-serif;">

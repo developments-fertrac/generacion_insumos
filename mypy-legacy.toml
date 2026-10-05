@@ -12,7 +12,10 @@
 
 [tool.mypy]
 python_version = "3.12"
-mypy_path = "."
+# El legacy corre en Windows: se analiza como Windows en cualquier maquina para
+# que el conteo sea el mismo en desarrollo, CI y produccion.
+platform = "win32"
+mypy_path = ".,src"
 
 files = [
     "tasks",
@@ -42,12 +45,20 @@ module = [
     "win32com.*",
     "win32clipboard.*",
     "pythoncom.*",
+    "win32process.*",
+    "psutil.*",
     "selenium.*",
     "openpyxl.*",
     "msoffcrypto.*",
     "xlrd.*",
-    "fitz.*",
     "PIL.*",
     "dateutil.*",
 ]
 ignore_missing_imports = true
+
+# El ratchet mide SOLO el legacy. El nucleo nuevo (src/insumos) lo revisa el
+# mypy estricto de pyproject.toml; si mypy lo encuentra (instalacion editable o
+# MYPYPATH) lo analiza en silencio para que sus errores no cuenten aqui.
+[[tool.mypy.overrides]]
+module = ["insumos", "insumos.*"]
+follow_imports = "silent"

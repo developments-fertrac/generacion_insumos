@@ -1,8 +1,12 @@
-"""Adaptadores de Excel: lectores, escritores COM/openpyxl y optimizador.
+"""Adaptadores de Excel: el unico codigo del nucleo que abre y escribe libros.
 
-Aqui vive el unico codigo que abre y escribe archivos de Excel:
-    - readers.py:          msoffcrypto + pandas (descifrado, descubrimiento por prefijo)
-    - com_writer.py:       win32com (plantilla, formulas, pivots, subtotales)
-    - openpyxl_writer.py:  alternativa sin COM
-    - optimizer.py:        xlsx_cleaner + copia .xlsb
+- ``lector``              ExcelReader: lee .xlsx cifrados o no, descifrando en memoria.
+- ``maestros``            Matriz USD y Distribucion de matrices.
+- ``fuentes_inventario``  puerto FuenteInventario sobre las carpetas de Fertrac.
+- ``fuentes_ventas``      entradas de ventas (plantilla, inventario, MYR, matriz, licitados).
+- ``com_inventario``      escritor de produccion via Excel COM (+ funciones puras).
+- ``escritor_openpyxl``   escritor sin Excel sobre la plantilla real (``--dry-run``).
+- ``escritor_simple``     titulo diario de la columna de existencia.
+- ``reporte_inventario``  REPORTE_ELIMINACIONES_*.xlsx.
+- ``comparador``          comparacion golden (por clave) y de paridad (por posicion).
 """

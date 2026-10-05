@@ -35,6 +35,7 @@ from core.email_notifier import EmailNotifier  # noqa: E402
 from insumos.adapters.excel.escritor_openpyxl import EscritorInventarioOpenpyxl  # noqa: E402
 from insumos.adapters.excel.fuentes_inventario import FuenteInventarioArchivos  # noqa: E402
 from insumos.adapters.excel.reporte_inventario import EscritorReporteXlsx  # noqa: E402
+from insumos.adapters.system import reloj  # noqa: E402  (hora Colombia)
 from insumos.application.actualizar_inventario import (  # noqa: E402
     ActualizarInventario,
     ResultadoActualizacion,
@@ -86,6 +87,7 @@ class ActualizacionInventario(BaseTask):
                 plantilla=fuente.ruta_plantilla(),
                 carpeta_salida=salida,
                 password=password,
+                carpeta_temporal=paths.temporal_inventario,  # INVENTARIO_TMP_DIR en .env
             )
             reporte = EscritorReporteXlsx(salida)  # misma carpeta que el proceso anterior
         return ActualizarInventario(
@@ -94,7 +96,7 @@ class ActualizacionInventario(BaseTask):
             reporte=reporte,
             reglas_bd=REGLAS_BD,
             reglas_inventario=REGLAS_INVENTARIO,
-            hoy=date.today(),
+            hoy=reloj.hoy(),
         )
 
     def execute(self) -> None:
@@ -128,7 +130,7 @@ class ActualizacionInventario(BaseTask):
         lineas = [
             "Proceso de Actualizacion de Inventario General completado.",
             "",
-            f"Fecha de ejecucion: {datetime.now():%d/%m/%Y %H:%M:%S}",
+            f"Fecha de ejecucion: {reloj.ahora():%d/%m/%Y %H:%M:%S}",
             f"Carpeta de trabajo: {self.settings.paths.output_inv_general}",
             f"Archivo generado: {salida.name if salida else ''}",
             "",
@@ -156,9 +158,9 @@ def _linea_fuente(ruta: Path) -> str:
     """Como el aviso de 'Fuente ERP' del proceso anterior, ahora para la base de datos."""
     if not ruta.exists():
         return f"Fuente base de datos: {ruta.name} (no disponible)"
-    modificado = datetime.fromtimestamp(ruta.stat().st_mtime)
+    modificado = reloj.desde_timestamp(ruta.stat().st_mtime)
     linea = f"Fuente base de datos: {ruta.name} (modificado: {modificado:%d/%m/%Y %H:%M:%S})"
-    dias = (date.today() - modificado.date()).days
+    dias = (reloj.hoy() - modificado.date()).days
     if dias > 0:
         linea += f"<br>*** ATENCION: este archivo NO es de hoy (tiene {dias} dia(s) de antiguedad). ***"
     return linea

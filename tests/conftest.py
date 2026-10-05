@@ -21,7 +21,7 @@ for _ruta in (str(_RAIZ / "src"), str(_RAIZ)):
 @pytest.fixture(autouse=True)
 def _entorno_limpio(monkeypatch: pytest.MonkeyPatch) -> None:
     """Cada prueba arranca sin estado heredado de la maquina."""
-    for clave in ("LOGS_DIR", "STATE_DIR", "HEADLESS"):
+    for clave in ("LOGS_DIR", "STATE_DIR"):
         monkeypatch.delenv(clave, raising=False)
 
 

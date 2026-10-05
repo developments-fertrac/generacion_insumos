@@ -6,11 +6,10 @@ leer. El loader de Fase 1 se apoya en estas mismas funciones.
 
 Por que importa
 ---------------
-``config/rules/inventario.yaml`` arranca con ``rules: []`` y asi debe permanecer
-hasta la Fase 3. Si alguien lo conectara antes de tiempo, el inventario pasaria
-completo y sin transformar: el archivo de salida tendria el tamano correcto y
-las cifras de ayer. Es el peor modo de fallo posible en un pipeline: silencioso
-y con apariencia de exito.
+Si un YAML de ``config/rules/`` quedara sin reglas activas (por ejemplo, todas
+con ``enabled: false``), el inventario pasaria completo y sin transformar: el
+archivo de salida tendria el tamano correcto y las cifras de ayer. Es el peor
+modo de fallo posible en un pipeline: silencioso y con apariencia de exito.
 
 Por eso un pipeline vacio es un **error explicito**, no un no-op.
 """

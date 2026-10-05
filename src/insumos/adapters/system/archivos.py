@@ -38,9 +38,3 @@ def mas_reciente(carpeta: Path, prefijo: str) -> Path | None:
     encontrados = candidatos(carpeta, prefijo)
     return max(encontrados, key=lambda p: p.stat().st_mtime) if encontrados else None
 
-
-def requerido(carpeta: Path, prefijo: str, que_es: str) -> Path:
-    archivo = mas_reciente(carpeta, prefijo)
-    if archivo is None:
-        raise FileNotFoundError(f"No se encontro {que_es}: ningun archivo '{prefijo}*' en {carpeta}")
-    return archivo

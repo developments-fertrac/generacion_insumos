@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
@@ -33,25 +34,17 @@ MESES_ES = {
 MESES_ES_NOMBRE = {v.lower(): k for k, v in MESES_ES.items()}
 MESES_ES_NOMBRE["setiembre"] = 9
 
-MESES_ES_INVERTIDO = {
-    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
-    "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10,
-    "noviembre": 11, "diciembre": 12,
-}
 
-MESES_REMISIONES = [
-    "1. ENERO", "2. FEBRERO", "3. MARZO", "4. ABRIL", "5.MAYO", "6. JUNIO",
-    "7. JULIO", "8. AGOSTO", "9. SEPTIEMBRE", "10. OCTUBRE", "11. NOVIEMBRE", "12. DICIEMBRE",
-]
+
+
+def _hoy_colombia() -> date:
+    """Fecha de hoy en Bogota (el servidor puede estar en otra zona horaria)."""
+    return datetime.now(ZoneInfo("America/Bogota")).date()
 
 
 def get_month_folder() -> str:
-    now = date.today()
+    now = _hoy_colombia()
     return f"{now.month:02d}. {MESES_ES[now.month]}"
-
-
-def get_month_folder_remisiones() -> str:
-    return MESES_REMISIONES[date.today().month - 1]
 
 
 @dataclass(frozen=True)
@@ -89,11 +82,15 @@ class ExcelConfig:
 @dataclass(frozen=True)
 class PathsConfig:
     base: Path = field(default_factory=lambda: Path(_env("BASE_PATH", r"D:\Fertrac\Usuarios\infocompras\ARCHIVOS DIARIOS 2026")))
-    remisiones: Path = field(default_factory=lambda: Path(_env("REMISIONES_BASE", r"D:\Fertrac\Usuarios\infocompras\$CARPETA COMPRAS 2026\REMISIONES")))
     # Carpeta donde la base de datos deja sus exportaciones (Inventario.xlsx,
     # InformesDeVentas(Facturas)_268*.xlsx). Reemplaza la descarga por Selenium.
     db_export: Path | None = field(default_factory=lambda: Path(v) if (v := _env("DB_EXPORT_DIR")) else None)
     inventario_bd_archivo: str = field(default_factory=lambda: _env("INVENTARIO_BD_FILE", "Inventario.xlsx"))
+    # Carpeta para la copia temporal (descifrada) de la plantilla que abre Excel.
+    # Vacio = carpeta de salida del inventario.
+    temporal_inventario: Path | None = field(
+        default_factory=lambda: Path(v) if (v := _env("INVENTARIO_TMP_DIR")) else None
+    )
 
     @property
     def informes(self) -> Path:
@@ -133,13 +130,7 @@ class PathsConfig:
     def output_inv_general(self) -> Path:
         return self.base / "Pruebas Inv General"
 
-    @property
-    def remisiones_mes(self) -> Path:
-        return self.remisiones / get_month_folder_remisiones()
 
-    def ensure_dirs(self) -> None:
-        for p in [self.ventas_mes, self.output_inv_general]:
-            p.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass(frozen=True)

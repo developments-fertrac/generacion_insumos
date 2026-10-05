@@ -27,13 +27,15 @@ Que se gana, que se paga, que queda bloqueado.
 | # | Decision | Estado |
 |---|----------|--------|
 | 0001 | Migracion incremental (strangler fig), no reescritura | Aceptada |
-| 0002 | pandas + pandera como portador de datos del dominio | Aceptada |
+| 0002 | pandas + pandera como portador de datos del dominio | Aceptada (pandera retirado por 0010) |
 | 0003 | Orden de reglas en YAML, no en Python | Aceptada |
 | 0004 | COM se queda en fase 1; openpyxl se evalua en fase 6 | Aceptada |
 | 0005 | Git como unico historial; se borra el versionado por archivos | Aceptada |
 | 0006 | El estado operativo (logs, perfiles, cache) vive fuera del repo | Aceptada |
 | 0007 | Ratchet de tipos sobre el legacy; mypy estricto en codigo nuevo | Aceptada |
 | 0008 | La base de datos reemplaza la descarga del ERP por Selenium | Aceptada |
+| 0009 | Ventas: pipeline de reglas con motor dual hasta probar paridad | Aceptada |
+| 0010 | Cierre de hallazgos de la auditoria de documentacion (modifica 0002: sin pandera) | Aceptada |
 
 ## Decisiones de la seccion 6 del plan aun sin ADR
 

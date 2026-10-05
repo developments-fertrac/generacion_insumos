@@ -119,11 +119,6 @@ def chrome_version_instalada() -> str | None:
     return None
 
 
-def chrome_version_mayor() -> str | None:
-    """Version mayor de Chrome instalado (ej. '153') o None."""
-    return _mayor(chrome_version_instalada())
-
-
 def chromedriver_version(ruta) -> str | None:
     """Version completa del ChromeDriver en la ruta indicada (ej. '153.0.8010.52')."""
     try:
@@ -188,14 +183,10 @@ def _buscar_en_cache(chrome_mayor: str | None) -> Path | None:
             log.info("ChromeDriver %s encontrado en cache: %s", chrome_mayor, mejor[0])
             return mejor[0]
 
-        con_version = sorted(drivers, key=lambda d: _sortable(d[1]), reverse=True)
-        if con_version and con_version[0][1]:
-            log.warning(
-                "Sin ChromeDriver para mayor %s en cache; usando el mas reciente "
-                "disponible (%s): %s",
-                chrome_mayor, con_version[0][1], con_version[0][0],
-            )
-            return con_version[0][0]
+        # Un driver de otra version mayor SIEMPRE falla ("This version of
+        # ChromeDriver only supports Chrome version X"): no se usa; se descarga.
+        log.info("Sin ChromeDriver para mayor %s en cache; se intentara descargar", chrome_mayor)
+        return None
     else:
         con_version = [d for d in drivers if d[1]]
         if con_version:
@@ -311,7 +302,14 @@ def obtener_chromedriver_path(reemplazar_local: bool = True) -> str | None:
     if nuevo is not None:
         return str(nuevo)
 
-    # Sin objetivo claro: ultimo recurso, el local tal cual
+    if chrome_mayor:
+        # Con la version de Chrome conocida, un driver sin validar no sirve.
+        # None => quien llama usa Selenium Manager (descarga automatica).
+        log.warning("Sin ChromeDriver %s en cache ni por descarga; se delega en Selenium Manager",
+                    chrome_mayor)
+        return None
+
+    # Sin version de Chrome detectada: ultimo recurso, el local tal cual
     for cand in (local, Path(r"C:\chromedriver\chromedriver.exe"), Path("chromedriver.exe")):
         if cand.exists():
             log.warning("Usando ChromeDriver %s sin validar (no se pudo "
@@ -321,7 +319,3 @@ def obtener_chromedriver_path(reemplazar_local: bool = True) -> str | None:
     log.error("No se encontro ningun ChromeDriver compatible")
     return None
 
-
-def asegurar_chromedriver_local() -> str | None:
-    """Revalida y, si hace falta, reemplaza el ChromeDriver local. Devuelve su ruta."""
-    return obtener_chromedriver_path(reemplazar_local=True)

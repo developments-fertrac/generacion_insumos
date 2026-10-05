@@ -16,31 +16,33 @@ import numpy as np
 import msoffcrypto
 from unidecode import unidecode
 
+import sys
+
+_SRC = Path(__file__).resolve().parent.parent / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
 from tasks.base_task import BaseTask
-from core.logger import get_logger
+from insumos.domain.rules.ventas import columnas as _CV  # referencias como texto (2026-10-02)
+from insumos.domain.rules.ventas.integraciones import descuento_a_decimal as _descuento_a_decimal
+from core.logger import get_logger, _LOGS_ROOT
 from core.email_notifier import EmailNotifier
 from core.excel_processing import (
     HAS_COM,
-    safe_close_workbook,
-    safe_quit_excel,
     excel_serial_from_date,
 )
 from core.excel_utils import (
     decrypt_to_stream as _decrypt_to_stream,
     read_excel_any as _read_excel_any,
-    find_sheet_name,
     norm as _norm,
     norm_simple as _norm_simple,
     norm_colname as _norm_colname,
     norm_label as _norm_label,
-    norm_sheet as _norm_sheet,
     norm_base_filename as _norm_base_filename,
     strip_dolares_temporales as _strip_dolares_temporales,
     extract_fecha_es as _extract_fecha_es,
-    resolve_cols as _resolve_cols,
-    write_excel as _write_excel,
 )
-from config.settings import Settings, MESES_ES, MESES_ES_NOMBRE
+from config.settings import Settings
 from core.xlsx_cleaner import reducir_tamano_xlsx
 
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -144,7 +146,7 @@ class ActualizacionVentas(BaseTask):
         self.notifier = EmailNotifier(self.settings.smtp_ventas, self.name)
         self.paths = self.settings.paths
         self.excel_cfg = self.settings.excel
-        self.log_file = Path(__file__).resolve().parent.parent / "logs" / _hoy_bogota().isoformat() / f"{self.name}.log"
+        self.log_file = _LOGS_ROOT / _hoy_bogota().isoformat() / f"{self.name}.log"  # misma ruta que core.logger
 
     def execute(self):
         indicador = self._crear_indicador_progreso()
@@ -152,6 +154,26 @@ class ActualizacionVentas(BaseTask):
             self._ejecutar()
         finally:
             self._eliminar_indicador_progreso(indicador)
+
+    # Notificaciones: BaseTask.run llama una sola vez a _notify_success o a
+    # _notify_failure. Antes _ejecutar tambien enviaba su propio correo y
+    # llegaban dos por corrida (y un [OK] aunque el post-proceso fallara).
+    def _adjunto_log(self):
+        ruta = getattr(self, "log_file", None)
+        return ruta if ruta is not None and ruta.exists() else None
+
+    def _notify_success(self, detail):
+        if self.notifier:
+            self.notifier.notify_success(
+                detail=getattr(self, "_detalle_exito", None) or detail,
+                attachment=self._adjunto_log(),
+            )
+
+    def _notify_failure(self, error):
+        if self.notifier:
+            tb = getattr(self, "_traceback_error", "")
+            cuerpo = f"ERROR: {error}\n\nTraceback:\n{tb}" if tb else f"ERROR: {error}"
+            self.notifier.notify_failure(error=cuerpo, attachment=self._adjunto_log())
 
     # ─────────────────────────────────────────────────────────────────
     #  CONFIG (from settings)
@@ -220,17 +242,8 @@ class ActualizacionVentas(BaseTask):
     def DIR_BACKUPS(self):
         return self.paths.base / "Backups_Ventas"
 
-    @property
-    def FN_INV_GENERAL(self):
-        return "$2026 INVENTARIO GENERAL.xlsx"
 
-    @property
-    def FN_INFORME_VENTAS(self):
-        return "InformesDeVentas(Facturas)_177_20250906.xlsx"
 
-    @property
-    def FN_MATRIZ_CLIENTES(self):
-        return "MATRIZ COMPLETA DE CLIENTES.xlsx"
 
     @property
     def DIR_INFORME_VENTAS_MES(self):
@@ -242,17 +255,8 @@ class ActualizacionVentas(BaseTask):
     def SHEET_VENTAS_OPTIONS(self):
         return ["VENTAS 2026", "VENTAS 2025"]
 
-    @property
-    def SHEET_INV_GENERAL(self):
-        return "INVENTARIO"
 
-    @property
-    def SHEET_COSTOS_INVFINAL(self):
-        return "COSTOS INV FINAL"
 
-    @property
-    def SHEET_MATRIZ(self):
-        return "CLIENTES GENERAL"
 
     @property
     def COLS_CLAVE_VENTAS(self):
@@ -319,7 +323,7 @@ class ActualizacionVentas(BaseTask):
         indicador = self.paths.base / "PROCESANDO.txt"
         try:
             with indicador.open("w", encoding="utf-8") as f:
-                f.write(f"Inicio: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Inicio: {datetime.now(ZONA_COLOMBIA).strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("El proceso esta en ejecucion...\n")
                 f.write(f"Revisa el archivo: {self.log_file.name}\n")
         except Exception:
@@ -577,8 +581,6 @@ class ActualizacionVentas(BaseTask):
     def _read_excel_any(self, xlsx, **kwargs):
         return _read_excel_any(xlsx, **kwargs)
 
-    def _write_excel(self, df_or_dict, path_out, sheetname=None):
-        return _write_excel(df_or_dict, path_out, sheetname=sheetname)
 
     # ─────────────────────────────────────────────────────────────────
     #  TEMP FILE
@@ -639,31 +641,7 @@ class ActualizacionVentas(BaseTask):
             return False
         return True
 
-    def _excel_col_to_index(self, col_letter):
-        col_letter = col_letter.upper()
-        n = 0
-        for ch in col_letter:
-            n = n * 26 + (ord(ch) - 64)
-        return n
 
-    def _save_stream_to_tempfile(self, stream, suffix="src"):
-        tmp = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.xlsx', prefix=f'tmp_{suffix}_',
-            dir=str(self.BASE_PATH), delete=False
-        )
-        pos = stream.tell()
-        stream.seek(0)
-        tmp.write(stream.read())
-        tmp.close()
-        stream.seek(pos)
-        tmp_path = Path(tmp.name)
-        try:
-            import ctypes
-            FILE_ATTRIBUTE_HIDDEN = 0x02
-            ctypes.windll.kernel32.SetFileAttributesW(str(tmp_path), FILE_ATTRIBUTE_HIDDEN)
-        except Exception as e:
-            self.log.warning("No se pudo ocultar archivo temporal: %s", e)
-        return tmp_path
 
     def _to_excel_cell_value(self, v):
         try:
@@ -700,52 +678,12 @@ class ActualizacionVentas(BaseTask):
             return bool(v)
         return v
 
-    def _sanitize_df_for_excel(self, df):
-        # DataFrame.applymap se retiro en pandas 3 (se llama .map desde 2.1).
-        mapear = getattr(df, "map", None) or df.applymap
-        return mapear(self._to_excel_cell_value)
 
     # ─────────────────────────────────────────────────────────────────
     #  COLUMN RESOLUTION
     # ─────────────────────────────────────────────────────────────────
 
-    COL_SYNONYMS = {
-        "AÑO": ["AÑO", "ANIO", "Año", "Ano", "ANO"],
-        "MES No.": ["MES NO.", "MES NO", "MES NRO", "MES Nº", "MES NUM", "MES No", "MES", "Mes No.", "Mes No", "MES NRO.", "MES NO ."],
-        "MES": ["MES", "Mes", "MES NOMBRE", "NOMBRE MES"],
-        "FECHA": ["FECHA", "Fecha", "F. FECHA", "FCHA"],
-        "NIT CLIENTE": ["NIT CLIENTE", "NIT", "Nit Cliente", "NIT_CLIENTE"],
-        "REFERENCIA": ["REFERENCIA", "Referencia", "REF", "Ref", "CODIGO", "CÓDIGO", "Codigo"],
-        "MARCA": ["MARCA", "Marca", "BRAND"],
-        "DCTO CONDICIONADO": ["DCTO CONDICIONADO", "DTO CONDICIONADO", "DESCUENTO CONDICIONADO", "DCTO COND.", "DCTO CONDIC."],
-        "FECHA DE ACTUALIZACION": ["FECHA DE ACTUALIZACION", "Fecha de actualización", "FECHA ACTUALIZACION", "F. ACTUALIZACION"],
-    }
 
-    def _resolve_cols_flex(self, df, cols_map):
-        idx = {_norm_colname(c): c for c in df.columns}
-        resolved = {}
-        for key, target in cols_map.items():
-            wanted_norm = _norm_colname(target)
-            cands = [target] + self.COL_SYNONYMS.get(target, [])
-            found = None
-            for c in cands:
-                cn = _norm_colname(c)
-                if cn in idx:
-                    found = idx[cn]
-                    break
-            if not found:
-                for kn, real in idx.items():
-                    if wanted_norm and wanted_norm in kn:
-                        found = real
-                        break
-            if not found:
-                best = difflib.get_close_matches(wanted_norm, list(idx.keys()), n=1, cutoff=0.7)
-                if best:
-                    found = idx[best[0]]
-            if not found:
-                raise KeyError(f"No encuentro la columna '{target}'. Encabezados: {list(df.columns)}")
-            resolved[key] = found
-        return resolved
 
     def _template_synonyms_for(self, header_raw):
         h = _norm_colname(header_raw)
@@ -919,7 +857,8 @@ class ActualizacionVentas(BaseTask):
         if ci["ref"] in df.columns:
             df = df[~df[ci["ref"]].isna() & (df[ci["ref"]].astype(str).str.strip() != "")].copy()
 
-        for c in [ci.get("numero"), ci.get("ref"), "Documento"]:
+        # La referencia es texto: no se convierte a numero ("0123" sigue "0123").
+        for c in [ci.get("numero"), "Documento"]:
             if c and c in df.columns:
                 df[c] = _a_numero_si_todo_convierte(df[c])
 
@@ -930,8 +869,7 @@ class ActualizacionVentas(BaseTask):
             df = df.drop(columns=["COL_TMP_1"])
 
         if ci["ref"] in df.columns:
-            df[ci["ref"]] = df[ci["ref"]].astype(str).str.strip()
-            df[ci["ref"]] = df[ci["ref"]].replace({"nan": None, "None": None, "": None})
+            df[ci["ref"]] = df[ci["ref"]].apply(_CV.normalizar_referencia)
             n_refs = df[ci["ref"]].notna().sum()
             self.log.info("Referencias validas despues de limpieza: %d", n_refs)
 
@@ -984,16 +922,7 @@ class ActualizacionVentas(BaseTask):
             columnas_inv.append("LIDER LINEA")
         inv = inv[columnas_inv].drop_duplicates(COLS_NORM["ref"], keep="last")
 
-        def normalizar_ref(s):
-            if pd.isna(s):
-                return None
-            s_str = str(s).strip()
-            if s_str == "" or s_str.lower() == "nan":
-                return None
-            try:
-                return str(int(float(s_str)))
-            except Exception:
-                return s_str
+        normalizar_ref = _CV.normalizar_referencia  # texto: sin int(float())
 
         if COLS_NORM["ref"] in inv.columns:
             self.log.info("Normalizando referencias en INVENTARIO...")
@@ -1054,10 +983,10 @@ class ActualizacionVentas(BaseTask):
             return df
         myr2 = myr[[ref_real, cost_real]].copy()
         myr2 = myr2.rename(columns={ref_real: COLS_NORM["ref"], cost_real: "COSTO FACTOR HOY"})
-        myr2[COLS_NORM["ref"]] = myr2[COLS_NORM["ref"]].astype(str).str.strip()
-        df[COLS_NORM["ref"]] = df[COLS_NORM["ref"]].astype(str).str.strip()
+        myr2[COLS_NORM["ref"]] = myr2[COLS_NORM["ref"]].apply(_CV.normalizar_referencia)
+        df[COLS_NORM["ref"]] = df[COLS_NORM["ref"]].apply(_CV.normalizar_referencia)
         myr2 = myr2.drop_duplicates(COLS_NORM["ref"], keep="last")
-        myr2 = myr2[myr2[COLS_NORM["ref"]].notna() & (myr2[COLS_NORM["ref"]] != "nan")]
+        myr2 = myr2[myr2[COLS_NORM["ref"]].notna()]
         self.log.info("Haciendo merge por REFERENCIA (MYR)...")
         df_result = df.merge(myr2, on=COLS_NORM["ref"], how="left", suffixes=("", "_myr"))
         if "COSTO FACTOR HOY_myr" in df_result.columns:
@@ -1109,11 +1038,15 @@ class ActualizacionVentas(BaseTask):
             if vr in df.columns:
                 vr_num = pd.to_numeric(df[vr], errors='coerce').fillna(0)
                 mask = (dcto != 0) & (vr_num != 0)
+                if mask.any():
+                    df[dc] = df[dc].astype(object)  # pandas 3 no mezcla float y texto
                 df.loc[mask, dc] = "0%"
                 self.log.info("normalizar_dctos: %d registros corregidos (VR DESCUENTO != 0)", mask.sum())
             elif pf in df.columns:
                 pie = df[pf].apply(to_num_pct)
                 mask = (dcto != 0) & (pie != 0)
+                if mask.any():
+                    df[dc] = df[dc].astype(object)  # pandas 3 no mezcla float y texto
                 df.loc[mask, dc] = "0%"
                 self.log.info("normalizar_dctos: %d registros corregidos (fallback PIE FACT)", mask.sum())
         return df
@@ -2230,13 +2163,395 @@ class ActualizacionVentas(BaseTask):
     #  MAIN EXECUTION
     # ═══════════════════════════════════════════════════════════════════
 
+    # ─────────────────────────────────────────────────────────────────
+    #  ENTRADAS Y MOTOR DE TRANSFORMACION
+    # ─────────────────────────────────────────────────────────────────
+
+    @property
+    def MOTOR(self):
+        """``VENTAS_MOTOR=reglas`` usa config/rules/ventas.yaml; ``legacy`` (defecto) los pasos de siempre."""
+        motor = os.getenv("VENTAS_MOTOR", "legacy").strip().lower()
+        return motor if motor in ("legacy", "reglas") else "legacy"
+
+    def localizar_archivos(self):
+        """(plantilla, inventario actualizado, MYR, matriz de clientes, informe _268)."""
+        log = self.log
+        log.info("BUSCANDO ARCHIVO DE VENTAS (PLANTILLA)")
+        p_actualizacion = self.DIR_PRUEBAS / self.FN_ACTUALIZACION
+        if p_actualizacion.exists():
+            p_ventas = p_actualizacion
+            log.info("Usando archivo de actualizacion: %s", p_ventas)
+        else:
+            log.warning("No existe %s; se usa el archivo inicial de la ruta base (primera ejecucion)",
+                        p_actualizacion)
+            p_ventas = self.find_file_by_loose_name(self.BASE_PATH, self.FN_VENTAS)
+        log.info("BUSCANDO OTROS ARCHIVOS")
+        # Desde 2026-10: LINEA / SUB-LINEA / LIDER LINEA salen del inventario
+        # que genera actualizacion_inv desde la base de datos (no del maestro).
+        p_inv = self.find_inventario_actualizado()
+        p_myr = self.find_myr_existencia_by_fecha(self.BASE_PATH)
+        p_mat = self.find_matriz_clientes_by_prefix(self.BASE_PATH)
+        log.info("BUSCANDO INFORME DE VENTAS (FACTURAS)")
+        p_inf = self.find_informe_facturas_by_prefix(
+            self.DIR_INFORME_VENTAS_MES, prefix="InformesDeVentas(Facturas)", only_today=False
+        )
+        log.info("Archivos encontrados:")
+        log.info("  VENTAS: %s", p_ventas.name)
+        log.info("  INVENTARIO: %s", p_inv.name)
+        log.info("  MYR: %s", p_myr.name)
+        log.info("  INFORME: %s", p_inf.name)
+        log.info("  MATRIZ: %s", p_mat.name)
+        return p_ventas, p_inv, p_myr, p_mat, p_inf
+
+    def cargar_plantilla(self, p_ventas):
+        """(stream descifrado, hoja de ventas, DataFrame con encabezados normalizados)."""
+        from insumos.adapters.excel.fuentes_ventas import leer_plantilla_ventas
+
+        if p_ventas.name == self.FN_ACTUALIZACION:
+            ventas_stream = self._abrir_actualizacion(p_ventas)
+        else:
+            ventas_stream = self._decrypt_to_stream(p_ventas, self.PASSWORD_VENTAS)
+        hoja, df_ventas = leer_plantilla_ventas(ventas_stream, tuple(self.SHEET_VENTAS_OPTIONS))
+        self.log.info("Usando hoja: %s (%d registros, %d columnas)", hoja, len(df_ventas), len(df_ventas.columns))
+        return ventas_stream, hoja, df_ventas
+
+    def preparar_entradas(self, p_inf, p_inv, p_myr, p_mat, ventas_stream, columnas_plantilla):
+        """Lee todas las entradas una sola vez; ambos motores reciben lo mismo."""
+        from insumos.adapters.excel import fuentes_ventas as fv
+        from insumos.domain.ports import EntradasVentas
+
+        log = self.log
+        log.info("Leyendo informe: %s", p_inf.name)
+        informe = self._read_excel_any(p_inf)
+        inventario = fv.leer_inventario_lineas(self._decrypt_to_stream(p_inv, self.PASSWORD_INV_GENERAL))
+        motor_myr = "pyxlsb" if p_myr.suffix.lower() == ".xlsb" else "openpyxl"
+        log.info("  MYR leido con motor %s", motor_myr)
+        myr = fv.leer_myr(self._decrypt_to_stream(p_myr, self.PASSWORD_MYR), motor_myr)
+        matriz = fv.leer_matriz_clientes(self._decrypt_to_stream(p_mat, password=self.PASSWORD_VENTAS))
+        try:
+            precios, nits = fv.leer_precios_licitados(ventas_stream)
+        except Exception as e:
+            log.error("Hoja PRECIO UNIT LICITADOS no disponible: %s", e)
+            precios, nits = None, ()
+        return EntradasVentas(
+            informe=informe,
+            inventario=inventario,
+            myr=myr,
+            matriz_clientes=matriz,
+            columnas_plantilla=tuple(columnas_plantilla),
+            precios_licitados=precios,
+            nits_licitados=nits,
+        )
+
+    def transformar_reglas(self, entradas):
+        """Pasos 2 a 9 con el pipeline config/rules/ventas.yaml. Devuelve (df, resultado)."""
+        from insumos.application.transformar_ventas import TransformarVentas
+
+        reglas = Path(__file__).resolve().parent.parent / "config" / "rules" / "ventas.yaml"
+        resultado = TransformarVentas(reglas=reglas, hoy=_hoy_bogota())(entradas)
+        for paso in resultado.audit.pasos:
+            self.log.info(
+                "  [ventas] %-38s %7d -> %7d  elim=%-6d mod=%-6d %s",
+                paso.id_regla, paso.filas_antes, paso.filas_despues,
+                paso.eliminadas, paso.modificadas, "; ".join(paso.warnings),
+            )
+        return resultado.datos, resultado
+
+    def transformar(self, entradas, ventas_stream, anio):
+        motor = self.MOTOR
+        self.log.info("Motor de transformacion: %s", motor)
+        if motor == "reglas":
+            df, _ = self.transformar_reglas(entradas)
+            return df
+        return self._transformar_legacy(entradas, ventas_stream, anio)
+
+    def _transformar_legacy(self, entradas, ventas_stream, anio):
+        """Pasos 2 a 9 del proceso anterior, sin cambios de logica.
+
+        Se conserva como oraculo de paridad del pipeline de reglas
+        (config/rules/ventas.yaml). Se retira cuando scripts/comparar_ventas.py
+        de cero diferencias con datos reales y el area lo apruebe.
+        """
+        log = self.log
+        COLS_CLAVE_VENTAS_NORM = {
+            "nit": "NIT CLIENTE", "ref": "REFERENCIA", "marca": "MARCA",
+            "fecha": "FECHA", "mes": "MES", "mes_no": "MES NO.", "anio": "ANO", "numero": "NUMERO",
+        }
+        # =================== PASO 2: PROCESAR INFORME ===================
+        log.info("PROCESANDO INFORME DE VENTAS (NUEVO — ANO COMPLETO)")
+        df_inf = entradas.informe.copy()
+        df_inf = self.transformar_informe_ventas(df_inf)
+        df_inf, mapeo_inf = self.normalizar_columnas_df(df_inf)
+        if mapeo_inf:
+            log.info("  %d columnas normalizadas en informe", len(mapeo_inf))
+
+        # Eliminar FLETE VENTAS
+        if 'REFERENCIA' in df_inf.columns:
+            n_antes = len(df_inf)
+            df_inf = df_inf[df_inf['REFERENCIA'].astype(str).str.strip().str.upper() != 'FLETE VENTAS'].copy()
+            n_eliminados = n_antes - len(df_inf)
+            if n_eliminados > 0:
+                log.info("  Eliminados %d registros con REFERENCIA = 'FLETE VENTAS'", n_eliminados)
+        # Eliminar PUBLICIDAD
+        if 'REFERENCIA' in df_inf.columns:
+            n_antes = len(df_inf)
+            mask_no_publicidad = ~df_inf['REFERENCIA'].astype(str).str.upper().str.contains('PUBLICIDAD', na=False)
+            df_inf = df_inf[mask_no_publicidad].copy()
+            n_eliminados = n_antes - len(df_inf)
+            if n_eliminados > 0:
+                log.info("  Eliminados %d registros con 'PUBLICIDAD' en REFERENCIA", n_eliminados)
+
+        if 'FECHA' not in df_inf.columns:
+            raise ValueError("Columna FECHA no encontrada en informe")
+        df_inf['FECHA'] = pd.to_datetime(df_inf['FECHA'], dayfirst=True, errors='coerce').dt.normalize()
+
+        # ANO COMPLETO
+        anio_actual = anio
+        df_inf_octubre = df_inf[df_inf['FECHA'].dt.year == anio_actual].copy()
+
+        log.info("Calculando MES, MES NO., ANO nuevo...")
+        if 'FECHA' in df_inf_octubre.columns:
+            df_inf_octubre['FECHA'] = pd.to_datetime(df_inf_octubre['FECHA'], dayfirst=True, errors='coerce').dt.normalize()
+            df_inf_octubre['ANO'] = df_inf_octubre['FECHA'].dt.year
+            df_inf_octubre['MES NO.'] = df_inf_octubre['FECHA'].dt.month
+            meses_es = {
+                1: "ENERO", 2: "FEBRERO", 3: "MARZO", 4: "ABRIL",
+                5: "MAYO", 6: "JUNIO", 7: "JULIO", 8: "AGOSTO",
+                9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE"
+            }
+            df_inf_octubre['MES'] = df_inf_octubre['MES NO.'].map(meses_es)
+            n_con_mes = df_inf_octubre['MES NO.'].notna().sum()
+            mes_unico = sorted(df_inf_octubre['MES NO.'].dropna().unique())
+            log.info("  MES NO. calculado: %d/%d registros", n_con_mes, len(df_inf_octubre))
+            log.info("  Meses presentes en informe: %s", mes_unico)
+        else:
+            raise ValueError("No se puede calcular MES NO. sin columna FECHA")
+        log.info("  Registros ano completo en informe: %d", len(df_inf_octubre))
+        if len(df_inf_octubre) == 0:
+            raise ValueError("No hay datos del ano actual en el informe")
+
+        # Mapeo semantico
+        log.info("Aplicando mapeos semanticos...")
+        MAPEO_SEMANTICO = {
+            "NRO. DOCUMENTO CLIENTE": "NIT CLIENTE", "CIUDAD/SUCURSAL": "CIUDAD",
+            "DESCRIPCION": "DESCRPCION", "VALOR UNITARIO": "VR UNITARIO",
+            "CANTIDAD FACTURADA": "CANTIDAD", "VALOR BRUTO": "VR TOTAL",
+            "COSTO UNITARIO": "COSTO PROMEDIO", "VENDEDOR": "VEND", "PREFIJO": "DV",
+        }
+        columnas_mapeadas = {k: v for k, v in MAPEO_SEMANTICO.items() if k in df_inf_octubre.columns}
+        if columnas_mapeadas:
+            log.info("  Mapeando %d columnas", len(columnas_mapeadas))
+            df_inf_octubre = df_inf_octubre.rename(columns=columnas_mapeadas)
+
+        log.info("Validando columnas criticas en nuevo...")
+        for col in ['REFERENCIA', 'NIT CLIENTE', 'DV', 'CLIENTE', 'CIUDAD', 'VEND', 'CANTIDAD']:
+            if col in df_inf_octubre.columns:
+                n_vals = df_inf_octubre[col].notna().sum()
+                pct = (n_vals / len(df_inf_octubre)) * 100
+                log.info("  %s: %d/%d (%.1f%%)", col, n_vals, len(df_inf_octubre), pct)
+            else:
+                log.info("  %s: NO ENCONTRADA", col)
+
+        # =================== PASO 3: LIMPIEZAS ===================
+        log.info("Paso 3: Aplicando limpiezas...")
+        df_inf_octubre = self.ordenar_y_fechas(df_inf_octubre, COLS_CLAVE_VENTAS_NORM)
+        for cand in ["FECHA DE ACTUALIZACION", "FECHA ACTUALIZACION"]:
+            if cand in df_inf_octubre.columns:
+                df_inf_octubre[cand] = _hoy_bogota()
+                break
+
+        # =================== PASO 4: INTEGRAR INVENTARIO ===================
+        log.info("Paso 4: Integrando LINEA/SUBLINEA...")
+        df_inv = entradas.inventario.copy()
+        synonyms_inv = {"LINEA COPIA": ["LINEA COPIA", "LINEA"], "SUB-LINEA COPIA": ["SUB-LINEA COPIA", "SUBLINEA", "SUB-LINEA"]}
+        for target, cands in synonyms_inv.items():
+            if target not in df_inv.columns:
+                for cand in cands:
+                    if cand in df_inv.columns:
+                        df_inv.rename(columns={cand: target}, inplace=True)
+                        break
+        df_inf_octubre = self.integrar_linea_sublinea(df_inf_octubre, df_inv, COLS_CLAVE_VENTAS_NORM)
+
+        # =================== PASO 5: INTEGRAR MYR ===================
+        log.info("Paso 5: Integrando COSTO FACTOR HOY...")
+        df_myr = entradas.myr.copy()
+        df_inf_octubre = self.integrar_costo_factor_hoy(df_inf_octubre, df_myr, COLS_CLAVE_VENTAS_NORM)
+
+        # =================== PASO 6: INTEGRAR MATRIZ ===================
+        log.info("Paso 6: Integrando DCTO CONDICIONADO...")
+        df_mat_raw = entradas.matriz_clientes.copy()
+        log.info("  Registros totales en matriz: %d", len(df_mat_raw))
+
+        def _ajustar_matriz_clientes(df_mat):
+            df = df_mat.copy()
+            log.info("APLICANDO LOGICA DE DESCUENTOS:")
+            log.info("  Registros iniciales: %d", len(df))
+            if "TIPO DESCUENTO" in df.columns:
+                n_antes = len(df)
+                df = df[df["TIPO DESCUENTO"].astype(str).str.strip().str.upper() == "CONDICIONADO"].copy()
+                log.info("  Filtro TIPO DESCUENTO='CONDICIONADO': %d -> %d registros", n_antes, len(df))
+            if "DESCUENTO" in df.columns:
+                normalizar_a_decimal = _descuento_a_decimal  # "12,5%" -> 0.125
+                df["DESCUENTO"] = df["DESCUENTO"].apply(normalizar_a_decimal)
+            log.info("  Registros finales: %d", len(df))
+            return df
+
+        df_mat_adj = _ajustar_matriz_clientes(df_mat_raw)
+
+        if "NIT CLIENTE" in df_inf_octubre.columns and "NIT" in df_mat_adj.columns and "DESCUENTO" in df_mat_adj.columns:
+            columnas_merge = ["NIT", "DESCUENTO"]
+            df_mat_merge = df_mat_adj[columnas_merge].copy()
+            df_mat_merge = df_mat_merge.drop_duplicates("NIT", keep="last")
+            df_mat_merge = df_mat_merge[df_mat_merge["NIT"].notna()].copy()
+            log.info("  Clientes unicos: %d", len(df_mat_merge))
+            df_inf_octubre["NIT CLIENTE"] = df_inf_octubre["NIT CLIENTE"].astype(str).str.strip()
+            df_inf_octubre["NIT CLIENTE"] = df_inf_octubre["NIT CLIENTE"].replace({"nan": None, "None": None, "": None})
+            df_inf_octubre["NIT CLIENTE"] = df_inf_octubre["NIT CLIENTE"].str.replace(r'\.0$', '', regex=True)
+            df_mat_merge["NIT"] = df_mat_merge["NIT"].astype(str).str.strip()
+            df_mat_merge["NIT"] = df_mat_merge["NIT"].replace({"nan": None, "None": None, "": None})
+            df_mat_merge["NIT"] = df_mat_merge["NIT"].str.replace(r'\.0$', '', regex=True)
+            df_inf_octubre = df_inf_octubre.merge(df_mat_merge, left_on="NIT CLIENTE", right_on="NIT", how="left", suffixes=("", "_mat"))
+            if "DESCUENTO" in df_inf_octubre.columns:
+                df_inf_octubre = df_inf_octubre.rename(columns={"DESCUENTO": "DCTO CONDICIONADO"})
+                n_vacios = df_inf_octubre["DCTO CONDICIONADO"].isna().sum()
+                if n_vacios > 0:
+                    df_inf_octubre["DCTO CONDICIONADO"] = df_inf_octubre["DCTO CONDICIONADO"].fillna(0)
+                log.info("  Columna 'DCTO CONDICIONADO' integrada")
+            if "NIT" in df_inf_octubre.columns:
+                df_inf_octubre = df_inf_octubre.drop(columns=["NIT"])
+        else:
+            log.warning("  SALTANDO integracion de DCTO CONDICIONADO")
+
+        # =================== PASO 7: LIMPIEZA FINAL ===================
+        log.info("Paso 7: Limpieza final...")
+        df_inf_octubre = self.limpiar_linea_referencias_invalidas(df_inf_octubre, COLS_CLAVE_VENTAS_NORM)
+        if "PORCENTAJE DCTO A PIE DE FACTURA" not in df_inf_octubre.columns:
+            df_inf_octubre["PORCENTAJE DCTO A PIE DE FACTURA"] = ""
+        df_inf_octubre = self.normalizar_dctos(df_inf_octubre)
+
+        # =================== PASO 7.5: VTA ACORDADA X UNIDAD LICITADO ===================
+        from config.settings import get_month_folder as _get_month_folder
+        MONTH_FOLDER = _get_month_folder()
+        log.info("PASO 7.5: VTA ACORDADA X UNIDAD LICITADO (SOLO %s)", MONTH_FOLDER)
+        try:
+            log.info("  Cargando hoja 'PRECIO UNIT LICITADOS' desde plantilla...")
+            ventas_stream.seek(0)
+            df_precios = pd.read_excel(ventas_stream, sheet_name="PRECIO UNIT LICITADOS", engine="openpyxl", header=3)
+            log.info("  Hoja cargada: %d filas", len(df_precios))
+            df_precios.columns = [str(c).strip() for c in df_precios.columns]
+            col_ref_precios = None
+            for col in df_precios.columns:
+                if "REFERENCIA" in str(col).upper() and "FERTRAC" in str(col).upper():
+                    col_ref_precios = col
+                    break
+            if not col_ref_precios:
+                for col in df_precios.columns:
+                    if "REFERENCIA" in str(col).upper():
+                        col_ref_precios = col
+                        break
+            if not col_ref_precios:
+                raise ValueError("No se encontro columna REFERENCIA")
+            log.info("  Columna referencia: '%s'", col_ref_precios)
+
+            ventas_stream.seek(0)
+            df_primera_fila = pd.read_excel(ventas_stream, sheet_name="PRECIO UNIT LICITADOS", engine="openpyxl", header=None, nrows=1)
+            nits_headers = {}
+            col_letters = ['C', 'D', 'E', 'F', 'G', 'H']
+            for idx, letra in enumerate(col_letters, start=2):
+                if idx < len(df_primera_fila.columns):
+                    nit_val = df_primera_fila.iloc[0, idx]
+                    if pd.notna(nit_val):
+                        nit_str = _CV.texto_licitado(nit_val)  # numero -> entero redondeado
+                        if nit_str and nit_str not in ['', 'nan', 'None']:
+                            col_name = df_precios.columns[idx]
+                            nits_headers[nit_str] = col_name
+            if not nits_headers:
+                raise ValueError("No hay NITs en headers")
+            log.info("  %d NITs encontrados en headers", len(nits_headers))
+
+            tabla_busqueda = {}
+            for idx, row in df_precios.iterrows():
+                ref = _CV.texto_licitado(row[col_ref_precios]) if pd.notna(row[col_ref_precios]) else ""
+                if ref and ref not in ['', 'nan', 'None']:
+                    precios_por_nit = {}
+                    for nit, col_precio in nits_headers.items():
+                        if col_precio in df_precios.columns:
+                            precio = row[col_precio]
+                            if pd.notna(precio):
+                                try:
+                                    precio_float = float(precio)
+                                    if precio_float > 0:
+                                        precios_por_nit[nit] = precio_float
+                                except Exception:
+                                    pass
+                    if precios_por_nit:
+                        tabla_busqueda[ref] = precios_por_nit
+            log.info("  Tabla de busqueda creada: %d referencias con precios", len(tabla_busqueda))
+
+            if "NIT CLIENTE" not in df_inf_octubre.columns:
+                raise ValueError("Falta columna NIT CLIENTE")
+            if "REFERENCIA" not in df_inf_octubre.columns:
+                raise ValueError("Falta columna REFERENCIA")
+
+            log.info("Calculando VTA ACORDADA vectorizado (%d filas)...", len(df_inf_octubre))
+            filas_precios = []
+            for ref, precios_por_nit in tabla_busqueda.items():
+                for nit, precio in precios_por_nit.items():
+                    filas_precios.append({"_REF_LOOKUP": ref, "_NIT_LOOKUP": nit, "_PRECIO_LICITADO": precio})
+            df_precios_lookup = pd.DataFrame(filas_precios) if filas_precios else pd.DataFrame(columns=["_REF_LOOKUP", "_NIT_LOOKUP", "_PRECIO_LICITADO"])
+
+            df_inf_octubre["_NIT_CLEAN"] = df_inf_octubre["NIT CLIENTE"].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+            df_inf_octubre["_REF_CLEAN"] = df_inf_octubre["REFERENCIA"].apply(_CV.normalizar_referencia)
+            nits_validos = set(nits_headers.keys())
+
+            df_inf_octubre = df_inf_octubre.merge(df_precios_lookup, left_on=["_REF_CLEAN", "_NIT_CLEAN"], right_on=["_REF_LOOKUP", "_NIT_LOOKUP"], how="left")
+            mask_nit_valido = df_inf_octubre["_NIT_CLEAN"].isin(nits_validos)
+            df_inf_octubre["VTA ACORDADA X UNIDAD LICITADO"] = 0
+            df_inf_octubre.loc[mask_nit_valido, "VTA ACORDADA X UNIDAD LICITADO"] = df_inf_octubre.loc[mask_nit_valido, "_PRECIO_LICITADO"].fillna(0)
+            n_encontrados = int((df_inf_octubre["_PRECIO_LICITADO"].notna() & mask_nit_valido).sum())
+            n_no_encontrados = len(df_inf_octubre) - n_encontrados
+            df_inf_octubre.drop(columns=["_NIT_CLEAN", "_REF_CLEAN", "_REF_LOOKUP", "_NIT_LOOKUP", "_PRECIO_LICITADO"], inplace=True, errors='ignore')
+            log.info("  Encontrados: %d (%.1f%%)", n_encontrados, n_encontrados / len(df_inf_octubre) * 100)
+            log.info("  No encontrados: %d (%.1f%%)", n_no_encontrados, n_no_encontrados / len(df_inf_octubre) * 100)
+            log.info("Columna 'VTA ACORDADA X UNIDAD LICITADO' agregada")
+        except Exception as e:
+            log.error("Error en calculo VTA ACORDADA: %s", e)
+
+        # =================== PASO 8: ALINEAR COLUMNAS ===================
+        log.info("ALINEANDO COLUMNAS DEL ANO COMPLETO CON PLANTILLA")
+        def _norm_for_exclusion(s):
+            return _norm(s)
+        FORMULA_COLS_ALL = list(dict.fromkeys(self.COLS_FORMULAS_PRE + self.COLS_FORMULAS_POST))
+        formula_cols_norm = {_norm_for_exclusion(c) for c in FORMULA_COLS_ALL}
+        cols_plantilla = set(entradas.columnas_plantilla)
+        cols_octubre = set(df_inf_octubre.columns)
+        for col in cols_plantilla - cols_octubre:
+            col_norm = _norm_for_exclusion(col)
+            if col_norm not in formula_cols_norm:
+                df_inf_octubre[col] = np.nan
+        cols_nuevas = [c for c in cols_octubre - cols_plantilla if _norm_for_exclusion(c) not in formula_cols_norm]
+        cols_finales_validas = [c for c in entradas.columnas_plantilla if c in df_inf_octubre.columns] + cols_nuevas
+        for col in cols_finales_validas:
+            if col not in df_inf_octubre.columns:
+                df_inf_octubre[col] = np.nan
+        df_inf_octubre = df_inf_octubre[cols_finales_validas]
+        df_ventas = df_inf_octubre.copy()
+
+        log.info("  Ano completo (procesado): %d registros", len(df_ventas))
+        log.info("  Columnas finales: %d", len(cols_finales_validas))
+        if 'MES NO.' in df_ventas.columns:
+            log.info("  Desglose por mes:")
+            for mes_num in sorted(df_ventas['MES NO.'].dropna().unique()):
+                n_mes = (df_ventas['MES NO.'] == mes_num).sum()
+                log.info("    Mes %d: %d registros", int(mes_num), n_mes)
+
+        # =================== PASO 9: ORDENAR ===================
+        log.info("Paso 9: Ordenando...")
+        df_ventas = self.ordenar_y_fechas(df_ventas, COLS_CLAVE_VENTAS_NORM)
+        return df_ventas
+
     def _ejecutar(self):
         log = self.log
-        BASE_PATH = self.BASE_PATH
-        PASSWORD_VENTAS = self.PASSWORD_VENTAS
-        PASSWORD_INV_GENERAL = self.PASSWORD_INV_GENERAL
-        PASSWORD_MYR = self.PASSWORD_MYR
-
         try:
             log.info("=" * 60)
             log.info("== Inicio actualizacion $2026 VENTAS ==")
@@ -2245,65 +2560,13 @@ class ActualizacionVentas(BaseTask):
             mes_no, anio, pfirst, plast = self._month_now_bogota()
             log.info("Periodo detectado: mes=%d ano=%d  (%s -> %s)", mes_no, anio, pfirst, plast)
 
-            # Buscar archivos
-            log.info("BUSCANDO ARCHIVO DE VENTAS (PLANTILLA)")
-            p_actualizacion = self.DIR_PRUEBAS / self.FN_ACTUALIZACION
-            if p_actualizacion.exists():
-                p_ventas = p_actualizacion
-                log.info("Usando archivo de actualizacion: %s", p_ventas)
-            else:
-                log.warning("No existe %s; se usa el archivo inicial de la ruta base (primera ejecucion)",
-                            p_actualizacion)
-                p_ventas = self.find_file_by_loose_name(BASE_PATH, self.FN_VENTAS)
-            log.info("BUSCANDO OTROS ARCHIVOS")
-            # Desde 2026-10: LINEA / SUB-LINEA / LIDER LINEA salen del inventario
-            # que genera actualizacion_inv desde la base de datos (no del maestro).
-            p_inv = self.find_inventario_actualizado()
-            p_myr = self.find_myr_existencia_by_fecha(BASE_PATH)
-            p_mat = self.find_matriz_clientes_by_prefix(BASE_PATH)
-            log.info("BUSCANDO INFORME DE VENTAS (FACTURAS)")
-            p_inf = self.find_informe_facturas_by_prefix(
-                self.DIR_INFORME_VENTAS_MES, prefix="InformesDeVentas(Facturas)", only_today=False
-            )
-            log.info("Archivos encontrados:")
-            log.info("  VENTAS: %s", p_ventas.name)
-            log.info("  INVENTARIO: %s", p_inv.name)
-            log.info("  MYR: %s", p_myr.name)
-            log.info("  INFORME: %s", p_inf.name)
-            log.info("  MATRIZ: %s", p_mat.name)
+            p_ventas, p_inv, p_myr, p_mat, p_inf = self.localizar_archivos()
 
             # =================== PASO 1: CARGAR PLANTILLA ===================
             log.info("Paso 1: Abriendo $2026 VENTAS y normalizando columnas...")
-            if p_ventas.name == self.FN_ACTUALIZACION:
-                ventas_stream = self._abrir_actualizacion(p_ventas)
-            else:
-                ventas_stream = self._decrypt_to_stream(p_ventas, PASSWORD_VENTAS)
-            SHEET_VENTAS = None
-            df_ventas = None
-            for sheet_option in self.SHEET_VENTAS_OPTIONS:
-                try:
-                    df_ventas = pd.read_excel(ventas_stream, sheet_name=sheet_option, engine="openpyxl", header=1)
-                    SHEET_VENTAS = sheet_option
-                    log.info("Usando hoja: %s", SHEET_VENTAS)
-                    break
-                except ValueError:
-                    continue
-            if df_ventas is None:
-                raise ValueError(f"No se encontro ninguna hoja de ventas valida. Intentadas: {self.SHEET_VENTAS_OPTIONS}")
-            df_ventas = df_ventas.loc[:, ~df_ventas.columns.astype(str).str.startswith("Unnamed")]
-            df_ventas.columns = [str(c).strip() for c in df_ventas.columns]
-            df_ventas, mapeo_ventas = self.normalizar_columnas_df(df_ventas)
-            if mapeo_ventas:
-                log.info("  %d columnas normalizadas:", len(mapeo_ventas))
-
+            ventas_stream, SHEET_VENTAS, df_ventas = self.cargar_plantilla(p_ventas)
             COLUMNAS_ORDEN_ORIGINAL = list(df_ventas.columns)
             with self.archivo_temporal_seguro(ventas_stream, "template_full") as tmp_template:
-
-                COLS_CLAVE_VENTAS_NORM = {
-                    "nit": "NIT CLIENTE", "ref": "REFERENCIA", "marca": "MARCA",
-                    "fecha": "FECHA", "mes": "MES", "mes_no": "MES NO.", "anio": "ANO", "numero": "NUMERO",
-                }
-                COLS_MATRIZ_MAP_NORM = {"nit": "NIT", "dcto_cond": "DCTO CONDICIONADO", "porc_pie_fact": "PORCENTAJE DCTO A PIE DE FACTURA"}
 
                 log.info("Paso 1.5: Modo ANO COMPLETO — se reemplazaran TODOS los datos")
                 n_total_anterior = len(df_ventas)
@@ -2323,332 +2586,9 @@ class ActualizacionVentas(BaseTask):
                     backup_tmp.unlink(missing_ok=True)
                     raise RuntimeError(f"No se pudo crear el backup ({e}); se detiene para no arriesgar el archivo de actualizacion") from e
 
-                # =================== PASO 2: PROCESAR INFORME ===================
-                log.info("PROCESANDO INFORME DE VENTAS (NUEVO — ANO COMPLETO)")
-                df_inf = self._read_excel_any(p_inf)
-                df_inf = self.transformar_informe_ventas(df_inf)
-                df_inf, mapeo_inf = self.normalizar_columnas_df(df_inf)
-                if mapeo_inf:
-                    log.info("  %d columnas normalizadas en informe", len(mapeo_inf))
-
-                # Eliminar FLETE VENTAS
-                if 'REFERENCIA' in df_inf.columns:
-                    n_antes = len(df_inf)
-                    df_inf = df_inf[df_inf['REFERENCIA'].astype(str).str.strip().str.upper() != 'FLETE VENTAS'].copy()
-                    n_eliminados = n_antes - len(df_inf)
-                    if n_eliminados > 0:
-                        log.info("  Eliminados %d registros con REFERENCIA = 'FLETE VENTAS'", n_eliminados)
-                # Eliminar PUBLICIDAD
-                if 'REFERENCIA' in df_inf.columns:
-                    n_antes = len(df_inf)
-                    mask_no_publicidad = ~df_inf['REFERENCIA'].astype(str).str.upper().str.contains('PUBLICIDAD', na=False)
-                    df_inf = df_inf[mask_no_publicidad].copy()
-                    n_eliminados = n_antes - len(df_inf)
-                    if n_eliminados > 0:
-                        log.info("  Eliminados %d registros con 'PUBLICIDAD' en REFERENCIA", n_eliminados)
-
-                if 'FECHA' not in df_inf.columns:
-                    raise ValueError("Columna FECHA no encontrada en informe")
-                df_inf['FECHA'] = pd.to_datetime(df_inf['FECHA'], dayfirst=True, errors='coerce').dt.normalize()
-
-                # ANO COMPLETO
-                anio_actual = anio
-                df_inf_octubre = df_inf[df_inf['FECHA'].dt.year == anio_actual].copy()
-
-                log.info("Calculando MES, MES NO., ANO nuevo...")
-                if 'FECHA' in df_inf_octubre.columns:
-                    df_inf_octubre['FECHA'] = pd.to_datetime(df_inf_octubre['FECHA'], dayfirst=True, errors='coerce').dt.normalize()
-                    df_inf_octubre['ANO'] = df_inf_octubre['FECHA'].dt.year
-                    df_inf_octubre['MES NO.'] = df_inf_octubre['FECHA'].dt.month
-                    meses_es = {
-                        1: "ENERO", 2: "FEBRERO", 3: "MARZO", 4: "ABRIL",
-                        5: "MAYO", 6: "JUNIO", 7: "JULIO", 8: "AGOSTO",
-                        9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE"
-                    }
-                    df_inf_octubre['MES'] = df_inf_octubre['MES NO.'].map(meses_es)
-                    n_con_mes = df_inf_octubre['MES NO.'].notna().sum()
-                    mes_unico = sorted(df_inf_octubre['MES NO.'].dropna().unique())
-                    log.info("  MES NO. calculado: %d/%d registros", n_con_mes, len(df_inf_octubre))
-                    log.info("  Meses presentes en informe: %s", mes_unico)
-                else:
-                    raise ValueError("No se puede calcular MES NO. sin columna FECHA")
-                log.info("  Registros ano completo en informe: %d", len(df_inf_octubre))
-                if len(df_inf_octubre) == 0:
-                    raise ValueError("No hay datos del ano actual en el informe")
-
-                # Mapeo semantico
-                log.info("Aplicando mapeos semanticos...")
-                MAPEO_SEMANTICO = {
-                    "NRO. DOCUMENTO CLIENTE": "NIT CLIENTE", "CIUDAD/SUCURSAL": "CIUDAD",
-                    "DESCRIPCION": "DESCRPCION", "VALOR UNITARIO": "VR UNITARIO",
-                    "CANTIDAD FACTURADA": "CANTIDAD", "VALOR BRUTO": "VR TOTAL",
-                    "COSTO UNITARIO": "COSTO PROMEDIO", "VENDEDOR": "VEND", "PREFIJO": "DV",
-                }
-                columnas_mapeadas = {k: v for k, v in MAPEO_SEMANTICO.items() if k in df_inf_octubre.columns}
-                if columnas_mapeadas:
-                    log.info("  Mapeando %d columnas", len(columnas_mapeadas))
-                    df_inf_octubre = df_inf_octubre.rename(columns=columnas_mapeadas)
-
-                log.info("Validando columnas criticas en nuevo...")
-                for col in ['REFERENCIA', 'NIT CLIENTE', 'DV', 'CLIENTE', 'CIUDAD', 'VEND', 'CANTIDAD']:
-                    if col in df_inf_octubre.columns:
-                        n_vals = df_inf_octubre[col].notna().sum()
-                        pct = (n_vals / len(df_inf_octubre)) * 100
-                        log.info("  %s: %d/%d (%.1f%%)", col, n_vals, len(df_inf_octubre), pct)
-                    else:
-                        log.info("  %s: NO ENCONTRADA", col)
-
-                # =================== PASO 3: LIMPIEZAS ===================
-                log.info("Paso 3: Aplicando limpiezas...")
-                df_inf_octubre = self.ordenar_y_fechas(df_inf_octubre, COLS_CLAVE_VENTAS_NORM)
-                for cand in ["FECHA DE ACTUALIZACION", "FECHA ACTUALIZACION"]:
-                    if cand in df_inf_octubre.columns:
-                        df_inf_octubre[cand] = _hoy_bogota()
-                        break
-
-                # =================== PASO 4: INTEGRAR INVENTARIO ===================
-                log.info("Paso 4: Integrando LINEA/SUBLINEA...")
-                inv_stream = self._decrypt_to_stream(p_inv, PASSWORD_INV_GENERAL)
-                sheet_inv = find_sheet_name(inv_stream, targets=("INVENTARIO", "INVENTARIO GENERAL"))
-                def _leer_inv(stream, header_row):
-                    stream.seek(0)
-                    df = pd.read_excel(stream, sheet_name=sheet_inv, engine="openpyxl", header=header_row)
-                    df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
-                    df.columns = [str(c).strip() for c in df.columns]
-                    return df
-                df_inv = _leer_inv(inv_stream, 1)
-                if "REFERENCIA" not in df_inv.columns:
-                    df_inv = _leer_inv(inv_stream, 0)
-                df_inv, _ = self.normalizar_columnas_df(df_inv)
-                synonyms_inv = {"LINEA COPIA": ["LINEA COPIA", "LINEA"], "SUB-LINEA COPIA": ["SUB-LINEA COPIA", "SUBLINEA", "SUB-LINEA"]}
-                for target, cands in synonyms_inv.items():
-                    if target not in df_inv.columns:
-                        for cand in cands:
-                            if cand in df_inv.columns:
-                                df_inv.rename(columns={cand: target}, inplace=True)
-                                break
-                df_inf_octubre = self.integrar_linea_sublinea(df_inf_octubre, df_inv, COLS_CLAVE_VENTAS_NORM)
-
-                # =================== PASO 5: INTEGRAR MYR ===================
-                log.info("Paso 5: Integrando COSTO FACTOR HOY...")
-                myr_stream = self._decrypt_to_stream(p_myr, PASSWORD_MYR)
-                motor_myr = "pyxlsb" if p_myr.suffix.lower() == ".xlsb" else "openpyxl"
-                log.info("  MYR leido con motor %s", motor_myr)
-                df_myr = pd.read_excel(myr_stream, sheet_name=self.SHEET_COSTOS_INVFINAL, engine=motor_myr, header=2)
-                df_myr = df_myr.loc[:, ~df_myr.columns.astype(str).str.startswith("Unnamed")]
-                df_myr.columns = [str(c).strip() for c in df_myr.columns]
-                df_myr, _ = self.normalizar_columnas_df(df_myr)
-                if "REFERENCIA FERTRAC" in df_myr.columns:
-                    df_myr.rename(columns={"REFERENCIA FERTRAC": "REFERENCIA"}, inplace=True)
-                df_inf_octubre = self.integrar_costo_factor_hoy(df_inf_octubre, df_myr, COLS_CLAVE_VENTAS_NORM)
-
-                # =================== PASO 6: INTEGRAR MATRIZ ===================
-                log.info("Paso 6: Integrando DCTO CONDICIONADO...")
-                log.info("  Leyendo MATRIZ desde: %s", p_mat)
-                stream = self._decrypt_to_stream(p_mat, password=PASSWORD_VENTAS)
-                df_mat_raw = self._read_excel_any(stream, sheet_name=self.SHEET_MATRIZ)
-                df_mat_raw, mapeo_mat = self.normalizar_columnas_df(df_mat_raw)
-                if mapeo_mat:
-                    log.info("  %d columnas normalizadas en Matriz", len(mapeo_mat))
-                log.info("  Registros totales en matriz: %d", len(df_mat_raw))
-
-                def _ajustar_matriz_clientes(df_mat):
-                    df = df_mat.copy()
-                    log.info("APLICANDO LOGICA DE DESCUENTOS:")
-                    log.info("  Registros iniciales: %d", len(df))
-                    if "TIPO DESCUENTO" in df.columns:
-                        n_antes = len(df)
-                        df = df[df["TIPO DESCUENTO"].astype(str).str.strip().str.upper() == "CONDICIONADO"].copy()
-                        log.info("  Filtro TIPO DESCUENTO='CONDICIONADO': %d -> %d registros", n_antes, len(df))
-                    if "DESCUENTO" in df.columns:
-                        def normalizar_a_decimal(valor):
-                            if pd.isna(valor):
-                                return 0
-                            if isinstance(valor, (int, float)):
-                                if 0 <= valor <= 1:
-                                    return valor
-                                elif valor > 1:
-                                    return valor / 100
-                                else:
-                                    return 0
-                            val_str = str(valor).strip()
-                            if val_str == "" or val_str.upper() == "NAN":
-                                return 0
-                            val_norm = unidecode(val_str).upper().strip()
-                            if "SIN DTO" in val_norm or "SIN DESCUENTO" in val_norm:
-                                return 0
-                            if "5%" in val_norm and ("MAXIMO" in val_norm or "MAX" in val_norm) and "60" in val_norm:
-                                return 0.05
-                            match = re.search(r'(\d+(?:\.\d+)?)\s*%', val_str)
-                            if match:
-                                num = float(match.group(1))
-                                return num / 100
-                            try:
-                                val_num = float(val_str.replace("%", "").replace(",", ".").strip())
-                                if 0 <= val_num <= 1:
-                                    return val_num
-                                elif val_num > 1:
-                                    return val_num / 100
-                                else:
-                                    return 0
-                            except Exception:
-                                return 0
-                        df["DESCUENTO"] = df["DESCUENTO"].apply(normalizar_a_decimal)
-                    log.info("  Registros finales: %d", len(df))
-                    return df
-
-                df_mat_adj = _ajustar_matriz_clientes(df_mat_raw)
-
-                if "NIT CLIENTE" in df_inf_octubre.columns and "NIT" in df_mat_adj.columns and "DESCUENTO" in df_mat_adj.columns:
-                    columnas_merge = ["NIT", "DESCUENTO"]
-                    df_mat_merge = df_mat_adj[columnas_merge].copy()
-                    df_mat_merge = df_mat_merge.drop_duplicates("NIT", keep="last")
-                    df_mat_merge = df_mat_merge[df_mat_merge["NIT"].notna()].copy()
-                    log.info("  Clientes unicos: %d", len(df_mat_merge))
-                    df_inf_octubre["NIT CLIENTE"] = df_inf_octubre["NIT CLIENTE"].astype(str).str.strip()
-                    df_inf_octubre["NIT CLIENTE"] = df_inf_octubre["NIT CLIENTE"].replace({"nan": None, "None": None, "": None})
-                    df_inf_octubre["NIT CLIENTE"] = df_inf_octubre["NIT CLIENTE"].str.replace(r'\.0$', '', regex=True)
-                    df_mat_merge["NIT"] = df_mat_merge["NIT"].astype(str).str.strip()
-                    df_mat_merge["NIT"] = df_mat_merge["NIT"].replace({"nan": None, "None": None, "": None})
-                    df_mat_merge["NIT"] = df_mat_merge["NIT"].str.replace(r'\.0$', '', regex=True)
-                    df_inf_octubre = df_inf_octubre.merge(df_mat_merge, left_on="NIT CLIENTE", right_on="NIT", how="left", suffixes=("", "_mat"))
-                    if "DESCUENTO" in df_inf_octubre.columns:
-                        df_inf_octubre = df_inf_octubre.rename(columns={"DESCUENTO": "DCTO CONDICIONADO"})
-                        n_vacios = df_inf_octubre["DCTO CONDICIONADO"].isna().sum()
-                        if n_vacios > 0:
-                            df_inf_octubre["DCTO CONDICIONADO"] = df_inf_octubre["DCTO CONDICIONADO"].fillna(0)
-                        log.info("  Columna 'DCTO CONDICIONADO' integrada")
-                    if "NIT" in df_inf_octubre.columns:
-                        df_inf_octubre = df_inf_octubre.drop(columns=["NIT"])
-                else:
-                    log.warning("  SALTANDO integracion de DCTO CONDICIONADO")
-
-                # =================== PASO 7: LIMPIEZA FINAL ===================
-                log.info("Paso 7: Limpieza final...")
-                df_inf_octubre = self.limpiar_linea_referencias_invalidas(df_inf_octubre, COLS_CLAVE_VENTAS_NORM)
-                if "PORCENTAJE DCTO A PIE DE FACTURA" not in df_inf_octubre.columns:
-                    df_inf_octubre["PORCENTAJE DCTO A PIE DE FACTURA"] = ""
-                df_inf_octubre = self.normalizar_dctos(df_inf_octubre)
-
-                # =================== PASO 7.5: VTA ACORDADA X UNIDAD LICITADO ===================
-                from config.settings import get_month_folder as _get_month_folder
-                MONTH_FOLDER = _get_month_folder()
-                log.info("PASO 7.5: VTA ACORDADA X UNIDAD LICITADO (SOLO %s)", MONTH_FOLDER)
-                try:
-                    log.info("  Cargando hoja 'PRECIO UNIT LICITADOS' desde plantilla...")
-                    ventas_stream.seek(0)
-                    df_precios = pd.read_excel(ventas_stream, sheet_name="PRECIO UNIT LICITADOS", engine="openpyxl", header=3)
-                    log.info("  Hoja cargada: %d filas", len(df_precios))
-                    df_precios.columns = [str(c).strip() for c in df_precios.columns]
-                    col_ref_precios = None
-                    for col in df_precios.columns:
-                        if "REFERENCIA" in str(col).upper() and "FERTRAC" in str(col).upper():
-                            col_ref_precios = col
-                            break
-                    if not col_ref_precios:
-                        for col in df_precios.columns:
-                            if "REFERENCIA" in str(col).upper():
-                                col_ref_precios = col
-                                break
-                    if not col_ref_precios:
-                        raise ValueError("No se encontro columna REFERENCIA")
-                    log.info("  Columna referencia: '%s'", col_ref_precios)
-
-                    ventas_stream.seek(0)
-                    df_primera_fila = pd.read_excel(ventas_stream, sheet_name="PRECIO UNIT LICITADOS", engine="openpyxl", header=None, nrows=1)
-                    nits_headers = {}
-                    col_letters = ['C', 'D', 'E', 'F', 'G', 'H']
-                    for idx, letra in enumerate(col_letters, start=2):
-                        if idx < len(df_primera_fila.columns):
-                            nit_val = df_primera_fila.iloc[0, idx]
-                            if pd.notna(nit_val):
-                                nit_str = str(nit_val).strip().replace('.0', '')
-                                if nit_str and nit_str not in ['', 'nan', 'None']:
-                                    col_name = df_precios.columns[idx]
-                                    nits_headers[nit_str] = col_name
-                    if not nits_headers:
-                        raise ValueError("No hay NITs en headers")
-                    log.info("  %d NITs encontrados en headers", len(nits_headers))
-
-                    tabla_busqueda = {}
-                    for idx, row in df_precios.iterrows():
-                        ref = str(row[col_ref_precios]).strip().replace('.0', '') if pd.notna(row[col_ref_precios]) else ""
-                        if ref and ref not in ['', 'nan', 'None']:
-                            precios_por_nit = {}
-                            for nit, col_precio in nits_headers.items():
-                                if col_precio in df_precios.columns:
-                                    precio = row[col_precio]
-                                    if pd.notna(precio):
-                                        try:
-                                            precio_float = float(precio)
-                                            if precio_float > 0:
-                                                precios_por_nit[nit] = precio_float
-                                        except Exception:
-                                            pass
-                            if precios_por_nit:
-                                tabla_busqueda[ref] = precios_por_nit
-                    log.info("  Tabla de busqueda creada: %d referencias con precios", len(tabla_busqueda))
-
-                    if "NIT CLIENTE" not in df_inf_octubre.columns:
-                        raise ValueError("Falta columna NIT CLIENTE")
-                    if "REFERENCIA" not in df_inf_octubre.columns:
-                        raise ValueError("Falta columna REFERENCIA")
-
-                    log.info("Calculando VTA ACORDADA vectorizado (%d filas)...", len(df_inf_octubre))
-                    filas_precios = []
-                    for ref, precios_por_nit in tabla_busqueda.items():
-                        for nit, precio in precios_por_nit.items():
-                            filas_precios.append({"_REF_LOOKUP": ref, "_NIT_LOOKUP": nit, "_PRECIO_LICITADO": precio})
-                    df_precios_lookup = pd.DataFrame(filas_precios) if filas_precios else pd.DataFrame(columns=["_REF_LOOKUP", "_NIT_LOOKUP", "_PRECIO_LICITADO"])
-
-                    df_inf_octubre["_NIT_CLEAN"] = df_inf_octubre["NIT CLIENTE"].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
-                    df_inf_octubre["_REF_CLEAN"] = df_inf_octubre["REFERENCIA"].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
-                    nits_validos = set(nits_headers.keys())
-
-                    df_inf_octubre = df_inf_octubre.merge(df_precios_lookup, left_on=["_REF_CLEAN", "_NIT_CLEAN"], right_on=["_REF_LOOKUP", "_NIT_LOOKUP"], how="left")
-                    mask_nit_valido = df_inf_octubre["_NIT_CLEAN"].isin(nits_validos)
-                    df_inf_octubre["VTA ACORDADA X UNIDAD LICITADO"] = 0
-                    df_inf_octubre.loc[mask_nit_valido, "VTA ACORDADA X UNIDAD LICITADO"] = df_inf_octubre.loc[mask_nit_valido, "_PRECIO_LICITADO"].fillna(0)
-                    n_encontrados = int((df_inf_octubre["_PRECIO_LICITADO"].notna() & mask_nit_valido).sum())
-                    n_no_encontrados = len(df_inf_octubre) - n_encontrados
-                    df_inf_octubre.drop(columns=["_NIT_CLEAN", "_REF_CLEAN", "_REF_LOOKUP", "_NIT_LOOKUP", "_PRECIO_LICITADO"], inplace=True, errors='ignore')
-                    log.info("  Encontrados: %d (%.1f%%)", n_encontrados, n_encontrados / len(df_inf_octubre) * 100)
-                    log.info("  No encontrados: %d (%.1f%%)", n_no_encontrados, n_no_encontrados / len(df_inf_octubre) * 100)
-                    log.info("Columna 'VTA ACORDADA X UNIDAD LICITADO' agregada")
-                except Exception as e:
-                    log.error("Error en calculo VTA ACORDADA: %s", e)
-
-                # =================== PASO 8: ALINEAR COLUMNAS ===================
-                log.info("ALINEANDO COLUMNAS DEL ANO COMPLETO CON PLANTILLA")
-                def _norm_for_exclusion(s):
-                    return _norm(s)
-                FORMULA_COLS_ALL = list(dict.fromkeys(self.COLS_FORMULAS_PRE + self.COLS_FORMULAS_POST))
-                formula_cols_norm = {_norm_for_exclusion(c) for c in FORMULA_COLS_ALL}
-                cols_plantilla = set(COLUMNAS_ORDEN_ORIGINAL)
-                cols_octubre = set(df_inf_octubre.columns)
-                for col in cols_plantilla - cols_octubre:
-                    col_norm = _norm_for_exclusion(col)
-                    if col_norm not in formula_cols_norm:
-                        df_inf_octubre[col] = np.nan
-                cols_nuevas = [c for c in cols_octubre - cols_plantilla if _norm_for_exclusion(c) not in formula_cols_norm]
-                cols_finales_validas = [c for c in COLUMNAS_ORDEN_ORIGINAL if c in df_inf_octubre.columns] + cols_nuevas
-                for col in cols_finales_validas:
-                    if col not in df_inf_octubre.columns:
-                        df_inf_octubre[col] = np.nan
-                df_inf_octubre = df_inf_octubre[cols_finales_validas]
-                df_ventas = df_inf_octubre.copy()
-
-                log.info("  Ano completo (procesado): %d registros", len(df_ventas))
-                log.info("  Columnas finales: %d", len(cols_finales_validas))
-                if 'MES NO.' in df_ventas.columns:
-                    log.info("  Desglose por mes:")
-                    for mes_num in sorted(df_ventas['MES NO.'].dropna().unique()):
-                        n_mes = (df_ventas['MES NO.'] == mes_num).sum()
-                        log.info("    Mes %d: %d registros", int(mes_num), n_mes)
-
-                # =================== PASO 9: ORDENAR ===================
-                log.info("Paso 9: Ordenando...")
-                df_ventas = self.ordenar_y_fechas(df_ventas, COLS_CLAVE_VENTAS_NORM)
+                # =================== PASOS 2 A 9: TRANSFORMACION ===================
+                entradas = self.preparar_entradas(p_inf, p_inv, p_myr, p_mat, ventas_stream, COLUMNAS_ORDEN_ORIGINAL)
+                df_ventas = self.transformar(entradas, ventas_stream, anio)
 
                 # =================== PASO 10: GUARDAR ===================
                 CARPETA_PRUEBAS = self.DIR_PRUEBAS
@@ -2674,10 +2614,9 @@ class ActualizacionVentas(BaseTask):
                 log.info("Archivo: %s", final_path.name)
                 log.info("Total: %d registros", len(df_ventas))
 
-                self.notifier.notify_success(
-                    detail=f"Archivo: {final_path.name} — {len(df_ventas)} registros",
-                    attachment=self.log_file if self.log_file.exists() else None,
-                )
+                # El correo de exito lo envia BaseTask.run al terminar TODO el
+                # proceso (tablas dinamicas, reemplazo y copia .xlsb incluidos).
+                self._detalle_exito = f"Archivo: {final_path.name} — {len(df_ventas)} registros"
 
                 if 'MES NO.' in df_ventas.columns:
                     log.info("VERIFICACION FINAL (en memoria):")
@@ -2716,9 +2655,6 @@ class ActualizacionVentas(BaseTask):
             log.error("ERROR CRITICO: %s", e)
             error_traceback = traceback.format_exc()
             log.error(error_traceback)
-
-            self.notifier.notify_failure(
-                error=f"ERROR: {e}\n\nTraceback:\n{error_traceback}",
-                attachment=self.log_file if self.log_file.exists() else None,
-            )
+            # El correo de fallo lo envia BaseTask.run (uno solo), con este traceback.
+            self._traceback_error = error_traceback
             raise

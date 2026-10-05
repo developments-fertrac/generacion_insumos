@@ -22,7 +22,7 @@ y las 12 que quedaron con advertencia. El reporte de eliminaciones (hoja
 
 from __future__ import annotations
 
-from collections.abc import Set
+from collections.abc import Mapping, Set
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, ClassVar
@@ -48,6 +48,9 @@ class RuleContext:
     # Exportacion de base de datos ya filtrada (MOTIVO = INVENTARIO*). Es la
     # fuente de existencia, costo y total desde 2026-10 (ver ADR 0008).
     inventario_bd: pd.DataFrame = field(default_factory=pd.DataFrame)
+    # Tablas de referencia por nombre (ventas: inventario, myr, matriz_clientes,
+    # precios_licitados). Agregar una no obliga a tocar las reglas existentes.
+    tablas: Mapping[str, pd.DataFrame] = field(default_factory=dict)
     hoy: date | None = None
     params: dict[str, Any] = field(default_factory=dict)
 

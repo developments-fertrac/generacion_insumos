@@ -1,19 +1,40 @@
-# Pipeline de reglas de VENTAS
+# Pipeline de $2026 VENTAS: informe de facturas (_268) -> hoja VENTAS 2026.
 #
-# ESTADO: Fase 0 (placeholder). Se puebla en Fase 4.
-# Mismas reglas de contrato y de gobierno que config/rules/inventario.yaml,
-# incluida la proteccion en codigo contra pipelines vacios (allow_empty).
+# Mismo orden de pasos del proceso anterior (tasks/actualizacion_ventas.py,
+# pasos 2 a 9). La paridad con ese proceso la fija
+# tests/unit/rules/test_paridad_ventas.py y, con datos reales,
+# scripts/comparar_ventas.py.
+# Gobierno: un PR que toque este archivo requiere aprobacion del area de
+# control de ventas, ademas de la revision tecnica.
 
 pipeline: ventas
-version: 2026.10.0
+version: 2026.10.2
 
-rules: []
-# Orden previsto (Fase 4, segun seccion 5.2 del plan):
-#   - ven.normalizar_columnas
-#   - ven.normalizar_dctos
-#   - ven.ordenar_y_fechas
-#   - ven.integrar_linea_sublinea
-#   - ven.integrar_costo_factor_hoy
-#   - ven.limpiar_linea_referencias_invalidas
-#   - ven.validar_sublinea_en_cero
-#   - ven.validar_esquema_salida
+rules:
+  # Paso 2: informe de facturas
+  - id: ven.detectar_encabezado_informe
+  - id: ven.excluir_prefijos
+    params: { prefijos: [NC, NCDTO, NDCTO] }
+  - id: ven.estructurar_informe
+  - id: ven.fecha_de_venta
+  - id: ven.calcular_valor_unitario
+  - id: ven.eliminar_sin_referencia
+  - id: ven.tipificar_informe
+  - id: ven.excluir_referencias_no_comerciales
+    params: { exactas: [FLETE VENTAS], contienen: [PUBLICIDAD] }
+  - id: ven.filtrar_anio_en_curso
+  - id: ven.calcular_periodo
+  - id: ven.mapeo_semantico
+  # Paso 3
+  - id: ven.ordenar_por_fecha
+  # Pasos 4 a 7.5: cruces
+  - id: ven.integrar_linea_sublinea
+  - id: ven.integrar_costo_factor_hoy
+  - id: ven.integrar_dcto_condicionado
+  - id: ven.eliminar_referencias_invalidas
+  - id: ven.normalizar_dctos
+  - id: ven.vta_acordada_licitado
+  # Pasos 8 y 9: forma final
+  - id: ven.alinear_con_plantilla
+  - id: ven.ordenar_por_fecha
+  - id: ven.validar_salida

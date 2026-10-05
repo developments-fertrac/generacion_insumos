@@ -41,6 +41,7 @@ import pandas as pd
 
 from insumos.adapters.excel.escritor_simple import titulo_existencia
 from insumos.adapters.excel.lector import ExcelReader
+from insumos.adapters.system.reloj import ahora  # hora Colombia
 from insumos.domain.rules.inventario import columnas as C
 
 log = logging.getLogger("actualizacion_inventario")
@@ -225,15 +226,24 @@ class EscritorInventarioCom:
     hoja: str = "INVENTARIO"
     hoja_copia: str = "INVENTARIO COPIA"
     fila_encabezado: int = 2
+    carpeta_temporal: Path | None = None  # None = carpeta_salida
 
     def escribir(self, datos: pd.DataFrame, *, hoy: date) -> Path:
         import pythoncom  # type: ignore[import-untyped,import-not-found,unused-ignore]
         import win32com.client as win32  # type: ignore[import-untyped,import-not-found,unused-ignore]
 
         self.carpeta_salida.mkdir(parents=True, exist_ok=True)
-        destino = self.carpeta_salida / nombre_salida(self.prefijo_salida, datetime.now())
-        temporal = Path(tempfile.mkdtemp(prefix="insumos_inv_")) / "plantilla.xlsx"
+        destino = self.carpeta_salida / nombre_salida(self.prefijo_salida, ahora())
+        # Temporal junto a la salida, no en %TEMP%: Excel (DCOM) puede correr con
+        # otro usuario o no resolver rutas cortas (C:\Users\ADMINI~1.FER\...) y
+        # responder "no hemos encontrado ...plantilla.xlsx".
+        base_temporal = self.carpeta_temporal or self.carpeta_salida
+        base_temporal.mkdir(parents=True, exist_ok=True)
+        temporal = Path(tempfile.mkdtemp(prefix="_tmp_insumos_inv_", dir=base_temporal)) / "plantilla.xlsx"
+        log.info("Copia temporal de la plantilla: %s", temporal)
         temporal.write_bytes(ExcelReader(ruta=self.plantilla, password=self.password)._bytes_planos())
+        if not temporal.is_file():
+            raise FileNotFoundError(f"No se pudo crear la copia temporal de la plantilla: {temporal}")
 
         pythoncom.CoInitialize()
         excel = win32.DispatchEx("Excel.Application")

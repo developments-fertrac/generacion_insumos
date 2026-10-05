@@ -48,11 +48,18 @@ PIPELINE_INVENTARIO = [
     ["actualizacion_inv"],
 ]
 
+# Solo el envio del informe (recorte de imagenes + WhatsApp), sobre el
+# $2026 VENTAS_Actualizacion ya generado.
+PIPELINE_ENVIO = [
+    ["envio_informe_ventas"],
+]
+
 PIPELINES = {
     "completo": PIPELINE_COMPLETO,
     "ventas": PIPELINE_VENTAS,
     "inventario": PIPELINE_INVENTARIO,
     "parcialVentas": PIPELINE_PARCIAL_VENTAS,
+    "envio": PIPELINE_ENVIO,
 }
 
 

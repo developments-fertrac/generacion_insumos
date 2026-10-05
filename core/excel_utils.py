@@ -3,14 +3,13 @@ from __future__ import annotations
 import io
 import os
 import re
-import difflib
 from pathlib import Path
 
 import msoffcrypto
 import pandas as pd
 from unidecode import unidecode
 
-from config.settings import ExcelConfig, MESES_ES, MESES_ES_NOMBRE, MESES_ES_INVERTIDO
+from config.settings import ExcelConfig, MESES_ES_NOMBRE
 from core.seguridad import huella
 from core.logger import get_logger
 
@@ -50,13 +49,6 @@ def norm_label(s: str | None) -> str:
     t = re.sub(r"[^a-z0-9 ]", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     return t
-
-
-def norm_sheet(s: str) -> str:
-    s = unidecode(str(s)).lower().strip()
-    s = re.sub(r"\s+", " ", s)
-    s = re.sub(r"[^a-z0-9 ]", "", s)
-    return s
 
 
 def norm_base_filename(name: str) -> str:
@@ -224,79 +216,3 @@ def read_excel_any(xlsx: Path | io.BytesIO, **kwargs) -> pd.DataFrame:
 
     raise RuntimeError(f"El archivo '{p.name}' tiene extension {ext}, pero no es ni un ZIP ni un OLE.")
 
-
-def find_sheet_name(xlsx_stream_or_path, targets: tuple[str, ...] = ("inventario", "inventario general", "inv")) -> str:
-    xf = pd.ExcelFile(xlsx_stream_or_path, engine="openpyxl")
-    names = xf.sheet_names
-    norm_map = {norm_sheet(n): n for n in names}
-    tnorms = [norm_sheet(t) for t in targets]
-    for t in tnorms:
-        if t in norm_map:
-            return norm_map[t]
-    for t in tnorms:
-        for nn, real in norm_map.items():
-            if t in nn:
-                return real
-    if names:
-        return names[0]
-    raise ValueError("El libro no tiene hojas.")
-
-
-def find_sheet_by_pattern(workbook, patron: str, ignorar_dolares: bool = True) -> str | None:
-    for sheet_name in workbook.sheetnames:
-        nombre_limpio = sheet_name
-        if ignorar_dolares:
-            nombre_limpio = re.sub(r"^\$+", "", sheet_name).strip()
-        if patron in nombre_limpio:
-            return sheet_name
-    return None
-
-
-def find_file_by_pattern(directorio: str | Path, patron: str, ignorar_dolares: bool = True) -> Path | None:
-    dir_path = Path(directorio)
-    for archivo in dir_path.glob("*.xlsx"):
-        nombre_limpio = archivo.stem
-        if ignorar_dolares:
-            nombre_limpio = re.sub(r"^\$+", "", nombre_limpio).strip()
-        if patron in nombre_limpio:
-            return archivo
-    return None
-
-
-COL_SYNONYMS: dict[str, list[str]] = {}
-
-
-def resolve_cols(df: pd.DataFrame, cols_map: dict) -> dict:
-    idx = {norm_colname(c): c for c in df.columns}
-    resolved = {}
-    for key, target in cols_map.items():
-        wanted = norm_colname(target)
-        cands = [target] + COL_SYNONYMS.get(target, [])
-        found = None
-        for c in cands:
-            cn = norm_colname(c)
-            if cn in idx:
-                found = idx[cn]
-                break
-        if not found:
-            for kn, real in idx.items():
-                if wanted and wanted in kn:
-                    found = real
-                    break
-        if not found:
-            best = difflib.get_close_matches(wanted, list(idx.keys()), n=1, cutoff=0.7)
-            if best:
-                found = idx[best[0]]
-        if not found:
-            raise KeyError(f"No encuentro la columna '{target}'. Encabezados: {list(df.columns)}")
-        resolved[key] = found
-    return resolved
-
-
-def write_excel(df_or_dict, path_out: Path, sheetname: str | None = None) -> None:
-    if isinstance(df_or_dict, dict):
-        with pd.ExcelWriter(path_out, engine="openpyxl") as xlw:
-            for sh, dfo in df_or_dict.items():
-                dfo.to_excel(xlw, sheet_name=sh, index=False)
-    else:
-        df_or_dict.to_excel(path_out, sheet_name=sheetname or "Sheet1", index=False)

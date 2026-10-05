@@ -15,12 +15,12 @@ desde la base de datos) y RESUMEN REGLAS (antes/despues de cada regla).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from insumos.adapters.system.reloj import ahora as ahora_colombia
 from insumos.domain.ports import EvidenciaEjecucion
 from insumos.domain.rules.inventario import columnas as C
 
@@ -53,6 +53,34 @@ def _primera(fila: pd.Series, *columnas: str) -> str:
         if col in fila.index and _texto(fila[col]):
             return _texto(fila[col])
     return ""
+
+
+_HOJAS_FIJAS = ("FUENTES DE DATOS", "TODAS LAS ELIMINACIONES", "RESUMEN POR PASO",
+                "REFERENCIAS NUEVAS", "RESUMEN REGLAS")
+_LARGO_HOJA = 31  # limite de Excel
+_CARACTERES_INVALIDOS = str.maketrans(dict.fromkeys("[]:*?/\\", "-"))
+
+
+def nombres_de_hoja(pasos: list[str]) -> dict[str, str]:
+    """Nombre de hoja unico y valido para cada PASO.
+
+    Excel limita el nombre a 31 caracteres y prohibe ``[]:*?/\\``. Dos pasos que
+    coinciden en los primeros 31 caracteres (o con una hoja fija del reporte)
+    reciben un sufijo `` (2)``, `` (3)``... en vez de chocar al escribir.
+    """
+    usados = {h.upper() for h in _HOJAS_FIJAS}
+    salida: dict[str, str] = {}
+    for paso in pasos:
+        base = str(paso).replace(":", "").translate(_CARACTERES_INVALIDOS).strip() or "PASO"
+        nombre = base[:_LARGO_HOJA]
+        n = 2
+        while nombre.upper() in usados:
+            sufijo = f" ({n})"
+            nombre = base[:_LARGO_HOJA - len(sufijo)] + sufijo
+            n += 1
+        usados.add(nombre.upper())
+        salida[paso] = nombre
+    return salida
 
 
 def tabla_eliminaciones(evidencia: EvidenciaEjecucion, sello: str) -> pd.DataFrame:
@@ -102,7 +130,7 @@ class EscritorReporteXlsx:
 
     def escribir(self, evidencia: EvidenciaEjecucion) -> Path:
         self.carpeta.mkdir(parents=True, exist_ok=True)
-        ahora = datetime.now()
+        ahora = ahora_colombia()
         ruta = self.carpeta / f"{PREFIJO_REPORTE}_{ahora:%Y%m%d_%H%M%S}.xlsx"
 
         eliminaciones = tabla_eliminaciones(evidencia, ahora.strftime("%Y-%m-%d %H:%M:%S"))
@@ -123,8 +151,8 @@ class EscritorReporteXlsx:
             ).to_excel(xw, sheet_name="FUENTES DE DATOS", index=False)
             eliminaciones.to_excel(xw, sheet_name="TODAS LAS ELIMINACIONES", index=False)
             tabla_resumen(eliminaciones).to_excel(xw, sheet_name="RESUMEN POR PASO", index=False)
-            for paso in sorted(eliminaciones["PASO"].unique()):
-                nombre = paso.replace(":", "").replace("/", "-")[:31]
+            pasos = sorted(eliminaciones["PASO"].unique())
+            for paso, nombre in nombres_de_hoja(pasos).items():
                 eliminaciones[eliminaciones["PASO"] == paso].to_excel(xw, sheet_name=nombre, index=False)
             nuevas.to_excel(xw, sheet_name="REFERENCIAS NUEVAS", index=False)
             reglas.to_excel(xw, sheet_name="RESUMEN REGLAS", index=False)

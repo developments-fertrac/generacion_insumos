@@ -20,6 +20,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 import traceback
@@ -38,6 +39,15 @@ from selenium.common.exceptions import TimeoutException
 from core.email_notifier import EmailNotifier
 from core.logger import get_logger, _LOGS_ROOT
 from tasks.base_task import BaseTask
+
+_SRC = Path(__file__).resolve().parent.parent / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+# Hora de Colombia, no la del servidor (que puede estar en UTC): el mes del
+# filtro, el dia de la captura y la carpeta del log deben ser los de Bogota.
+from insumos.adapters.system.reloj import ahora as _ahora_colombia  # noqa: E402
+from insumos.adapters.system.reloj import hoy as _hoy_colombia  # noqa: E402
 
 try:
     import win32com.client as win32
@@ -93,6 +103,9 @@ DIR_IMAGENES = STATE_DIR / "Img informe"
 PROFILE_DIR = STATE_DIR / "chrome_profile_whatsapp_session"
 
 _DEFAULT_CHATS = ["Informe ventas diarias"]
+
+# Segundos que se espera a que Chrome arranque antes de declarar el intento fallido.
+TIMEOUT_INICIO_CHROME = 300
 
 
 def _get_destinatarios() -> list[str]:
@@ -218,58 +231,80 @@ def com_con_reintentos(funcion, *args, max_intentos=5, espera_base=2, **kwargs):
 
 
 # ===== FUNCIONES DE LIMPIEZA Y VERIFICACIÓN =====
-def matar_todos_chrome():
-    """Mata TODOS los procesos de Chrome/ChromeDriver y espera a que terminen."""
-    _log("   🔪 Matando procesos Chrome/ChromeDriver...")
+def _pids_chrome_del_perfil(perfil_dir: str) -> list[int]:
+    """PIDs de chrome.exe cuyo command line usa el perfil indicado.
 
+    Solo esos procesos son del proceso automatico: el Chrome personal del
+    usuario (otro perfil) no se toca.
+    """
+    objetivo = os.path.normcase(os.path.abspath(perfil_dir))
+    pids: list[int] = []
+    if PSUTIL_DISPONIBLE:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if (proc.info['name'] or '').lower() != 'chrome.exe':
+                    continue
+                linea = os.path.normcase(" ".join(proc.info['cmdline'] or []))
+                if objetivo in linea:
+                    pids.append(int(proc.info['pid']))
+            except Exception:
+                continue
+        return pids
+    try:
+        ruta = perfil_dir.replace("'", "''")
+        comando = (
+            "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+            f"Where-Object {{ $_.CommandLine -like '*{ruta}*' }} | "
+            "Select-Object -ExpandProperty ProcessId"
+        )
+        salida = subprocess.run(['powershell', '-NoProfile', '-Command', comando],
+                                capture_output=True, text=True, timeout=20).stdout
+        pids = [int(x) for x in salida.split() if x.strip().isdigit()]
+    except Exception as e:
+        _log(f"   ⚠️ No se pudieron listar los procesos de Chrome: {e}")
+    return pids
+
+
+def _terminar_pid(pid: int, arbol: bool = True) -> None:
+    """Termina un proceso por PID (y sus hijos si ``arbol``)."""
+    args = ['taskkill', '/F', '/PID', str(pid)] + (['/T'] if arbol else [])
+    try:
+        subprocess.run(args, capture_output=True, timeout=15)
+    except Exception as e:
+        _log(f"   ⚠️ No se pudo terminar el proceso {pid}: {e}")
+
+
+def cerrar_chrome_del_perfil(perfil_dir: str) -> None:
+    """Cierra solo el Chrome que usa el perfil de WhatsApp y los ChromeDriver.
+
+    Antes se mataban TODOS los chrome.exe del usuario (incluido su navegador
+    personal). Ahora se identifican por el ``user-data-dir`` del perfil.
+    ChromeDriver solo lo lanza la automatizacion, por eso se cierra completo.
+    """
+    _log("   🔪 Cerrando Chrome del perfil de WhatsApp y ChromeDriver...")
     try:
         subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe', '/T'],
                        capture_output=True, timeout=15)
-        subprocess.run(['taskkill', '/F', '/IM', 'chrome.exe', '/T'],
-                       capture_output=True, timeout=15)
     except Exception as e:
-        _log(f"   ⚠️ Error con taskkill: {e}")
+        _log(f"   ⚠️ Error cerrando ChromeDriver: {e}")
 
-    if PSUTIL_DISPONIBLE:
-        try:
-            for proc in psutil.process_iter(['pid', 'name']):
-                try:
-                    nombre = (proc.info['name'] or '').lower()
-                    if 'chrome' in nombre or 'chromedriver' in nombre:
-                        proc.kill()
-                except Exception:
-                    pass
-        except Exception:
-            pass
+    pids = _pids_chrome_del_perfil(perfil_dir)
+    for pid in pids:
+        _terminar_pid(pid)
+    if not pids:
+        _log("   ✓ No hay Chrome abierto con el perfil de WhatsApp")
+        return
 
     _log("   ⏳ Esperando que procesos terminen...")
     for segundo in range(1, 11):
         time.sleep(1)
-        hay_chrome = False
-        if PSUTIL_DISPONIBLE:
-            for proc in psutil.process_iter(['name']):
-                try:
-                    nombre = (proc.info['name'] or '').lower()
-                    if 'chrome' in nombre:
-                        hay_chrome = True
-                        break
-                except Exception:
-                    pass
-        else:
-            try:
-                result = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq chrome.exe'],
-                                        capture_output=True, text=True, timeout=5)
-                if 'chrome.exe' in result.stdout.lower():
-                    hay_chrome = True
-            except Exception:
-                pass
-        if not hay_chrome:
+        if not _pids_chrome_del_perfil(perfil_dir):
             _log(f"   ✓ Procesos terminados ({segundo}s)")
             return
         if segundo % 3 == 0:
-            _log(f"   ⏳ Aún hay procesos Chrome... ({segundo}s)")
+            _log(f"   ⏳ Aún hay procesos Chrome del perfil... ({segundo}s)")
 
-    _log("   ⚠️ Algunos procesos pueden seguir activos")
+    _log("   ⚠️ Algunos procesos del perfil pueden seguir activos")
 
 
 def verificar_puerto_disponible(puerto: int) -> bool:
@@ -355,9 +390,10 @@ class WhatsAppWeb:
                  + (f" ({mayor})" if mayor else ""))
             return Service(path)
 
-        # Ultima opcion: ChromeDriver del PATH
-        _log("   ⚠️ Usando ChromeDriver del PATH")
-        return None
+        # Ultima opcion: Selenium Manager (selenium >= 4.6) descarga el
+        # ChromeDriver exacto del Chrome instalado si no se le pasa ruta.
+        _log("   ⚠️ Sin ChromeDriver compatible local: se usa Selenium Manager")
+        return Service()
 
     def _configurar_opciones_chrome(self):
         """Configura las opciones de Chrome para WhatsApp Web."""
@@ -415,7 +451,7 @@ class WhatsAppWeb:
 
                 # 1. LIMPIEZA
                 _log("🔧 Paso 1: Limpieza previa...")
-                matar_todos_chrome()
+                cerrar_chrome_del_perfil(self.perfil_dir)
                 if intento >= 2:
                     limpiar_perfil_selectivo(self.perfil_dir)
 
@@ -462,12 +498,12 @@ class WhatsAppWeb:
 
                 thread = threading.Thread(target=iniciar_driver)
                 thread.start()
-                thread.join(timeout=300)
+                thread.join(timeout=TIMEOUT_INICIO_CHROME)
 
                 if not driver_iniciado[0]:
                     if driver_error[0]:
                         raise driver_error[0]
-                    raise TimeoutError("Chrome no respondió en 90 segundos")
+                    raise TimeoutError(f"Chrome no respondió en {TIMEOUT_INICIO_CHROME} segundos")
 
                 _log("   ✓ Chrome iniciado correctamente")
                 self.wait = WebDriverWait(self.driver, 60)
@@ -545,7 +581,7 @@ class WhatsAppWeb:
                         pass
                     self.driver = None
                 _log("   🧹 Limpieza post-error...")
-                matar_todos_chrome()
+                cerrar_chrome_del_perfil(self.perfil_dir)
                 espera = 10 * intento
                 _log(f"   ⏳ Esperando {espera}s antes de reintentar...")
                 time.sleep(espera)
@@ -970,13 +1006,13 @@ class WhatsAppWeb:
 
 # ===== FUNCIONES AUXILIARES =====
 def obtener_mes_actual_espanol():
-    """Retorna el mes actual en español."""
+    """Retorna el mes actual en español (hora de Colombia)."""
     meses = {
         1: "ENERO", 2: "FEBRERO", 3: "MARZO", 4: "ABRIL",
         5: "MAYO", 6: "JUNIO", 7: "JULIO", 8: "AGOSTO",
         9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE",
     }
-    return meses[datetime.now().month]
+    return meses[_ahora_colombia().month]
 
 
 def filtrar_pivot_por_mes_actual(ws):
@@ -1115,7 +1151,7 @@ def ocultar_dias_anteriores_y_obtener_rango(ws, fila_fechas=9, fila_fin=29):
     Mantiene visible: columna A + dia actual + Total general.
     """
     try:
-        dia_actual = datetime.now().day
+        dia_actual = _ahora_colombia().day
         _log(f"   📅 Día actual: {dia_actual}")
 
         columna_dia_actual = None
@@ -1324,12 +1360,14 @@ def _resolver_hoja(wb, nombre_esperado):
     coleccion = None
     nombres = []
     try:
-        coleccion = com_con_reintentos(wb.Worksheets)
-        total = com_con_reintentos(coleccion.Count)
+        # Worksheets, Count y Name son PROPIEDADES COM: llamarlas como funcion
+        # ("Número de parámetros no válido") era el error de este bloque.
+        coleccion = com_con_reintentos(lambda: wb.Worksheets)
+        total = int(com_con_reintentos(lambda: coleccion.Count))
         for i in range(1, total + 1):
             try:
                 ws_item = com_con_reintentos(coleccion.Item, i)
-                nombres.append(str(com_con_reintentos(ws_item.Name)))
+                nombres.append(str(com_con_reintentos(lambda: ws_item.Name)))
             except Exception:
                 continue
     except Exception as e:
@@ -1375,10 +1413,22 @@ def _resolver_hoja(wb, nombre_esperado):
     return None
 
 
+def _pid_de_excel(excel) -> int | None:
+    """PID de la instancia de Excel abierta por este proceso (no las del usuario)."""
+    try:
+        import win32process
+
+        return int(win32process.GetWindowThreadProcessId(excel.Hwnd)[1])
+    except Exception as e:
+        _log(f"   ⚠️ No se pudo obtener el PID de Excel: {e}")
+        return None
+
+
 def capturar_multiples_rangos(ruta_archivo, capturas_config, password=None, dir_imagenes=None):
     """Captura multiples rangos de Excel. Retorna (imagenes, factor)."""
     excel = None
     wb = None
+    pid_excel = None
     imagenes = []
     factor = None
     dir_imagenes = Path(dir_imagenes) if dir_imagenes else DIR_IMAGENES
@@ -1388,6 +1438,7 @@ def capturar_multiples_rangos(ruta_archivo, capturas_config, password=None, dir_
         excel = win32.DispatchEx('Excel.Application')
         excel.Visible = True
         excel.DisplayAlerts = False
+        pid_excel = _pid_de_excel(excel)
 
         if password:
             wb = excel.Workbooks.Open(ruta_archivo, False, False, None, password, password)
@@ -1517,11 +1568,8 @@ def capturar_multiples_rangos(ruta_archivo, capturas_config, password=None, dir_
             com_con_reintentos(excel.Quit, max_intentos=3)
         except Exception as e:
             _log(f"⚠️ No se pudo cerrar Excel normalmente, forzando: {e}")
-            try:
-                subprocess.run(['taskkill', '/F', '/IM', 'EXCEL.EXE'],
-                               capture_output=True, timeout=10)
-            except Exception:
-                pass
+            if pid_excel:
+                _terminar_pid(pid_excel, arbol=False)
 
         return imagenes, factor
     except Exception as e:
@@ -1535,11 +1583,8 @@ def capturar_multiples_rangos(ruta_archivo, capturas_config, password=None, dir_
             try:
                 com_con_reintentos(excel.Quit, max_intentos=2)
             except Exception:
-                try:
-                    subprocess.run(['taskkill', '/F', '/IM', 'EXCEL.EXE'],
-                                   capture_output=True, timeout=10)
-                except Exception:
-                    pass
+                if pid_excel:
+                    _terminar_pid(pid_excel, arbol=False)
         return [None] * len(capturas_config), None
     finally:
         ws = None
@@ -1555,7 +1600,7 @@ class EnvioInformeVentas(BaseTask):
         self.notifier = EmailNotifier(self.settings.smtp_ventas, self.name)
         self.paths = self.settings.paths
         self.excel_cfg = self.settings.excel
-        self.log_file = (_LOGS_ROOT / date.today().isoformat() / f"{self.name}.log")
+        self.log_file = (_LOGS_ROOT / _hoy_colombia().isoformat() / f"{self.name}.log")
 
         self.ruta_base = self.paths.base / "Pruebas"
         self.password_excel = self.excel_cfg.password
@@ -1666,15 +1711,31 @@ class EnvioInformeVentas(BaseTask):
             _log(f"{estado} {resultado['nombre']}")
         _log(f"{'✅' if exitosos == total else '⚠️'} Envíos exitosos: {exitosos}/{total}")
 
-        if total > 0:
-            self.notifier.notify_success(
-                detail=f"Archivo: {archivo.name} — Envíos exitosos: {exitosos}/{total}"
-                + f" — Factor MG: {factor if factor else 'N/A'}",
-                attachment=self.log_file if self.log_file.exists() else None,
-            )
-
         if exitosos == 0:
             raise RuntimeError("Ningún destinatario recibió el informe")
+
+        # El correo de exito lo envia BaseTask.run (una sola vez, solo si se llego aqui).
+        self._detalle_exito = (
+            f"Archivo: {archivo.name} — Envíos exitosos: {exitosos}/{total}"
+            f" — Factor MG: {factor if factor else 'N/A'}"
+        )
+
+    def _adjunto_log(self) -> Path | None:
+        ruta = getattr(self, "log_file", None)
+        return ruta if ruta is not None and ruta.exists() else None
+
+    def _notify_success(self, detail: str) -> None:
+        """Unico correo de exito: resumen del envio + log adjunto."""
+        if self.notifier:
+            self.notifier.notify_success(
+                detail=getattr(self, "_detalle_exito", None) or detail,
+                attachment=self._adjunto_log(),
+            )
+
+    def _notify_failure(self, error: str) -> None:
+        """Unico correo de fallo, con el log adjunto."""
+        if self.notifier:
+            self.notifier.notify_failure(error=error, attachment=self._adjunto_log())
 
     def teardown(self):
         if self.whatsapp:

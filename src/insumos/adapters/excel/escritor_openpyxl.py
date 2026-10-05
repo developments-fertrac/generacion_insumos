@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from copy import copy
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -36,6 +36,7 @@ from insumos.adapters.excel.com_inventario import (
 )
 from insumos.adapters.excel.escritor_simple import titulo_existencia
 from insumos.adapters.excel.lector import ExcelReader
+from insumos.adapters.system.reloj import ahora  # hora Colombia
 from insumos.domain.rules.inventario import columnas as C
 
 log = logging.getLogger("actualizacion_inventario")
@@ -68,7 +69,7 @@ class EscritorInventarioOpenpyxl:
         self._actualizar_tablas_dinamicas(wb, ultima, ancho)
 
         self.carpeta_salida.mkdir(parents=True, exist_ok=True)
-        destino = self.carpeta_salida / nombre_salida(self.prefijo_salida, datetime.now())
+        destino = self.carpeta_salida / nombre_salida(self.prefijo_salida, ahora())
         wb.save(destino)
         if self.cifrar_salida and self.password:
             _cifrar(destino, self.password)

@@ -1,10 +1,11 @@
-"""Esquemas pandera: contratos de datos en la entrada y salida del pipeline.
+"""Reservado para esquemas de datos del dominio (contratos de entrada y salida).
 
-- ``InventarioSchema``: DataFrame de inventario general
-- ``ValorizadoSchema``: DataFrame de valorizados por almacen
-- ``VentasSchema``: DataFrame de ventas
+Hoy los contratos se verifican con reglas del propio pipeline:
 
-Un esquema fallido NO detiene el pipeline: se usa ``lazy=True`` para reportar
-todos los errores juntos y las reglas se encargan de aislar las filas malas
-devolviendo ``RuleResult.removed`` con su motivo.
+- ``inv.validar_columnas_bd``  columnas de la exportacion de base de datos
+- ``inv.validar_salida``       cuadre del inventario contra la base de datos
+- ``ven.validar_salida``       columnas, filas y anio de la hoja VENTAS 2026
+
+La dependencia ``pandera`` se retiro porque ningun modulo la usaba (ADR 0010).
+Si se implementa el primer esquema, se vuelve a declarar en ``pyproject.toml``.
 """

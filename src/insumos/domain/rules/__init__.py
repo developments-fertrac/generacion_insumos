@@ -11,10 +11,10 @@ Reglas obligatorias:
    escrita para el negocio.
 4. Registradas con ``@rule("...")`` y declaradas en ``config/rules/*.yaml``.
 
-Importar este paquete registra las reglas de inventario.
+Importar este paquete registra las reglas de inventario y de ventas.
 """
 
 from __future__ import annotations
 
 # Importa los modulos de reglas para que @rule(...) se ejecute al importar.
-from insumos.domain.rules import inventario  # noqa: F401
+from insumos.domain.rules import inventario, ventas  # noqa: F401

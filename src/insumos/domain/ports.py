@@ -75,3 +75,33 @@ class EscritorReporte(Protocol):
 
     def escribir(self, evidencia: EvidenciaEjecucion) -> Path:
         ...
+
+
+# ----------------------------------------------------------------------
+# Ventas
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class EntradasVentas:
+    """Todo lo que el pipeline de ventas necesita, ya leido.
+
+    ``columnas_plantilla``: encabezados normalizados de la hoja VENTAS 2026.
+    ``precios_licitados`` es None si la hoja PRECIO UNIT LICITADOS no se pudo
+    leer (el proceso sigue sin la columna VTA ACORDADA, como antes).
+    """
+
+    informe: pd.DataFrame
+    inventario: pd.DataFrame
+    myr: pd.DataFrame
+    matriz_clientes: pd.DataFrame
+    columnas_plantilla: tuple[str, ...]
+    precios_licitados: pd.DataFrame | None = None
+    nits_licitados: tuple[str, ...] = ()
+
+
+class FuenteVentas(Protocol):
+    """Entradas de ventas (informe _268, inventario, MYR, matriz, plantilla)."""
+
+    def entradas(self) -> EntradasVentas:
+        ...

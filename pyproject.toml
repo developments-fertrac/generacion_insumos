@@ -12,7 +12,6 @@ dependencies = [
     # (copy-on-write y dtype de texto cambian en pandas 3). Revisar en Fase 4.
     "pandas>=2.2,<3",
     "numpy>=1.24.0",
-    "pandera>=0.20.0",
     "openpyxl>=3.1.0",
     "msoffcrypto-tool>=5.1.0",
     "unidecode>=1.3.0",
@@ -21,7 +20,6 @@ dependencies = [
     "PyYAML>=6.0.1",
     "xlrd>=2.0.0",
     "pyxlsb>=1.0.10",
-    "PyMuPDF>=1.24.0",
     "tzdata>=2024.1; sys_platform == 'win32'",
     "pywin32>=306; sys_platform == 'win32'",
 ]
@@ -117,7 +115,7 @@ convention = "google"
 [tool.mypy]
 python_version = "3.12"
 # Fase 0: solo se tipa el codigo nuevo. El legacy (tasks/, core/, config/,
-# orchestrator.py, run.py) tiene 129 errores de tipos y se revisa por etapas
+# orchestrator.py, run.py) se mide con el ratchet (quality-baseline.json) y se revisa por etapas
 # al migrarse en las fases 3-5. Para reincorporarlo: quitar su entrada de
 # `exclude` y su override laxo de abajo.
 files = ["src", "tests"]
@@ -132,7 +130,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 # --- EL DOMINIO SE TIPA ESTRICTO ---
-# Sin excepciones: pandas, pandera y stdlib. Cero win32com/selenium/openpyxl.
+# Sin excepciones: pandas y stdlib (+ PyYAML, unidecode). Cero win32com/selenium/openpyxl.
 [[tool.mypy.overrides]]
 module = "insumos.domain.*"
 disallow_any_explicit = false
@@ -166,6 +164,7 @@ ignore_errors = true
 module = [
     "win32com.*",
     "win32clipboard.*",
+    "win32process.*",
     "selenium.*",
     "openpyxl.*",
     "msoffcrypto.*",

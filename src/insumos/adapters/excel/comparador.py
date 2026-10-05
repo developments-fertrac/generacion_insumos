@@ -254,3 +254,41 @@ def _indexar(df: pd.DataFrame, claves: Sequence[str]) -> dict[Any, Any]:
         )
 
     return dict(zip(valores, df.index, strict=True))
+
+
+# ----------------------------------------------------------------------
+# Comparacion por posicion (ventas: no hay clave unica por linea)
+# ----------------------------------------------------------------------
+
+
+def comparar_por_posicion(
+    actual: pd.DataFrame,
+    nuevo: pd.DataFrame,
+    *,
+    tolerancia: float = 1e-9,
+    max_ejemplos: int = 20,
+) -> pd.DataFrame:
+    """Diferencias fila a fila entre dos salidas que deben venir en el mismo orden.
+
+    Devuelve un DataFrame (TIPO, COLUMNA, FILA, ACTUAL, NUEVO); vacio = paridad.
+    Por columna se reportan hasta ``max_ejemplos`` filas y el total en una fila
+    ``TOTAL``, para que una columna mal calculada no produzca 50.000 lineas.
+    """
+    filas: list[dict[str, Any]] = []
+    for c in actual.columns.difference(nuevo.columns):
+        filas.append({"TIPO": "columna_faltante", "COLUMNA": c, "FILA": None, "ACTUAL": None, "NUEVO": None})
+    for c in nuevo.columns.difference(actual.columns):
+        filas.append({"TIPO": "columna_extra", "COLUMNA": c, "FILA": None, "ACTUAL": None, "NUEVO": None})
+    if len(actual) != len(nuevo):
+        filas.append({"TIPO": "filas", "COLUMNA": "", "FILA": None, "ACTUAL": len(actual), "NUEVO": len(nuevo)})
+
+    n = min(len(actual), len(nuevo))
+    a = actual.reset_index(drop=True).iloc[:n]
+    b = nuevo.reset_index(drop=True).iloc[:n]
+    for c in a.columns.intersection(b.columns):
+        distintas = [i for i, (x, y) in enumerate(zip(a[c], b[c], strict=True)) if not _iguales(x, y, tolerancia)]
+        for i in distintas[:max_ejemplos]:
+            filas.append({"TIPO": "valor_distinto", "COLUMNA": c, "FILA": i, "ACTUAL": a.at[i, c], "NUEVO": b.at[i, c]})
+        if len(distintas) > max_ejemplos:
+            filas.append({"TIPO": "TOTAL", "COLUMNA": c, "FILA": None, "ACTUAL": len(distintas), "NUEVO": None})
+    return pd.DataFrame(filas, columns=["TIPO", "COLUMNA", "FILA", "ACTUAL", "NUEVO"])

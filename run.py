@@ -26,6 +26,8 @@ Ejemplos:
   python run.py                          # Ejecutar pipeline completo
   python run.py --workflow ventas        # Solo ventas: actualizacion → envio informe
   python run.py --workflow inventario    # Solo inventario (desde la exportacion de base de datos)
+  python run.py --workflow parcialVentas # Solo actualizacion de ventas (sin envio)
+  python run.py --workflow envio         # Solo envio del informe de ventas (WhatsApp)
   python run.py --task actualizacion_inv --dry-run  # Inventario sin tocar la plantilla (revision)
   python run.py --task envio_informe_ventas  # Recortar imagenes y enviarlas por WhatsApp Web
   python run.py --phase 1                # Ejecutar solo fase 1
@@ -53,6 +55,8 @@ Ejemplos:
         print("  completo    actualizacion_inv + actualizacion_ventas")
         print("  ventas      actualizacion_ventas → envio_informe_ventas")
         print("  inventario  actualizacion_inv")
+        print("  parcialVentas  actualizacion_ventas (sin envio)")
+        print("  envio       envio_informe_ventas")
         print()
         print("Tasks individuales:")
         for name in AVAILABLE_TASKS:

@@ -1,0 +1,24 @@
+Reemplazo manual - cierre de hallazgos 6, 7 y 8 (ADR 0010)
+==========================================================
+
+Copiar estos 5 archivos sobre los del proyecto, respetando las carpetas,
+TODOS JUNTOS (dependen entre si):
+
+  pyproject.toml                 (protegido) sin pandera ni PyMuPDF
+  core\excel_utils.py            (protegido) sin funciones sin uso
+  docs\adr\README.md             (protegido) indice con el ADR 0010
+  config\settings.py             sin MESES_ES_INVERTIDO (ya no lo importa excel_utils)
+  quality-baseline.json          linea base del ratchet en 12
+
+Importante: si se copia core\excel_utils.py sin config\settings.py (o al
+reves) no se rompe nada, pero el ratchet de tipos no cuadra. Copiar los cinco.
+
+Despues, en la carpeta del proyecto (PowerShell):
+
+  uv lock                                    # con internet: retira pandera y PyMuPDF del lock
+  uv run pytest                              # esperado: 220 passed
+  uv run python scripts/ratchet_types.py     # esperado: Ratchet OK: 12 errores
+  uv run lint-imports                        # regla de dependencia hexagonal
+
+Y publicar a produccion como siempre:
+  .\scripts\publicar_a_produccion.ps1 -Destino '<carpeta de produccion>'
