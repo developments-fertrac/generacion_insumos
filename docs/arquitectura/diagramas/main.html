@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="indice de vistas archify">
+<title>Generación de Insumos — índice de vistas de arquitectura</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-soft: #0e1727;
+    --panel: #111a2b;
+    --panel-2: #162136;
+    --border: #22324c;
+    --border-strong: #2f4463;
+    --text: #e6edf6;
+    --muted: #93a4bd;
+    --accent: #22d3ee;
+    --accent-soft: rgba(34, 211, 238, 0.14);
+    --accent-2: #8b5cf6;
+    --shadow: 0 18px 40px rgba(2, 6, 18, 0.45);
+    --radius: 10px;
+  }
+  html[data-theme="light"] {
+    --bg: #f4f7fb;
+    --bg-soft: #eef3f9;
+    --panel: #ffffff;
+    --panel-2: #f2f6fb;
+    --border: #d8e2ee;
+    --border-strong: #c2d1e2;
+    --text: #10233a;
+    --muted: #5b7086;
+    --accent: #0e7490;
+    --accent-soft: rgba(14, 116, 144, 0.10);
+    --accent-2: #6d28d9;
+    --shadow: 0 16px 34px rgba(16, 35, 58, 0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(circle at 12% -10%, rgba(34, 211, 238, 0.12), transparent 32rem),
+      radial-gradient(circle at 92% 6%, rgba(139, 92, 246, 0.10), transparent 28rem),
+      var(--bg);
+    color: var(--text);
+    font: 400 15px/1.5 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+  code, kbd, .mono {
+    font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, Consolas, monospace;
+  }
+
+  /* ---------- barra superior ---------- */
+  .bar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1rem;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 0.6rem; flex: none; }
+  .brand-mark {
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .brand-copy { display: flex; flex-direction: column; line-height: 1.2; }
+  .brand-copy strong { font-size: 0.92rem; letter-spacing: 0.01em; }
+  .brand-copy span { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; }
+
+  .tabs {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 0.3rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 0.15rem;
+  }
+  .tabs::-webkit-scrollbar { height: 6px; }
+  .tabs::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; }
+  .tab {
+    flex: none;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.84rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab .num { font-size: 0.68rem; opacity: 0.7; font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .tab:hover { color: var(--text); background: var(--panel-2); }
+  .tab[aria-selected="true"] {
+    color: var(--text);
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .actions { flex: none; display: flex; align-items: center; gap: 0.35rem; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    height: 32px; padding: 0 0.6rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--panel-2); color: var(--text);
+    font: inherit; font-size: 0.8rem; cursor: pointer;
+    text-decoration: none; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-strong); background: color-mix(in srgb, var(--accent-soft) 60%, var(--panel-2)); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.icon { width: 32px; padding: 0; justify-content: center; font-size: 1rem; line-height: 1; }
+  .btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
+
+  .segmented { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .segmented button {
+    border: 0; background: var(--panel-2); color: var(--muted);
+    font: inherit; font-size: 0.78rem; padding: 0 0.55rem; height: 32px; cursor: pointer;
+  }
+  .segmented button + button { border-left: 1px solid var(--border); }
+  .segmented button:hover { color: var(--text); }
+  .segmented button[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); }
+
+  /* ---------- subcabecera ---------- */
+  .subbar {
+    flex: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 1rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-soft);
+  }
+  .subbar h1 { margin: 0; font-size: 0.98rem; font-weight: 600; letter-spacing: 0.01em; }
+  .subbar p { margin: 0.1rem 0 0; font-size: 0.8rem; color: var(--muted); }
+  .facts { display: flex; align-items: center; gap: 0.5rem; flex: none; font-size: 0.72rem; color: var(--muted); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.55rem; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel);
+    font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .pill.accent { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }
+  .facts a { color: var(--accent); text-decoration: none; }
+  .facts a:hover { text-decoration: underline; }
+
+  /* ---------- aviso de incrustado bloqueado ---------- */
+  .notice {
+    flex: none;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border));
+    background: color-mix(in srgb, #f59e0b 12%, var(--bg-soft));
+    font-size: 0.8rem;
+  }
+  .notice[data-visible="true"] { display: flex; }
+  .notice a { color: var(--accent); }
+
+  /* ---------- escenario ---------- */
+  .stage { flex: 1 1 auto; min-height: 0; position: relative; background: var(--bg); }
+  .stage iframe {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border: 0; display: block; background: var(--bg);
+  }
+  .stage iframe[hidden] { display: none; }
+
+  .footer {
+    flex: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 0.35rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-soft);
+    font-size: 0.72rem; color: var(--muted);
+  }
+  .footer kbd {
+    border: 1px solid var(--border-strong); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 0.28rem; font-size: 0.68rem; background: var(--panel);
+  }
+  .footer .right { display: flex; gap: 0.9rem; flex-wrap: wrap; }
+
+  @media (max-width: 900px) {
+    .brand-copy, .segmented, .btn .label { display: none; }
+    .bar { gap: 0.5rem; padding: 0.5rem 0.6rem; }
+    .subbar { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-copy">
+      <strong>Generación de Insumos</strong>
+      <span>Vistas de arquitectura</span>
+    </span>
+  </div>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Vistas de arquitectura"></nav>
+
+  <div class="actions">
+    <button class="btn icon" id="prev" type="button" title="Vista anterior (Alt + ←)" aria-label="Vista anterior">‹</button>
+    <button class="btn icon" id="next" type="button" title="Vista siguiente (Alt + →)" aria-label="Vista siguiente">›</button>
+    <div class="segmented" role="group" aria-label="Modo de visualización">
+      <button type="button" data-mode="present" title="Diagrama a pantalla completa con la barra de la vista">Presentación</button>
+      <button type="button" data-mode="embed" title="Solo el diagrama, sin barra ni tarjetas">Diagrama</button>
+      <button type="button" data-mode="full" title="Vista completa de la vista, con tarjetas de nodo">Completo</button>
+    </div>
+    <button class="btn" id="theme" type="button" title="Cambiar tema (T)" aria-label="Cambiar tema de color"><span id="theme-label">Oscuro</span></button>
+    <button class="btn icon" id="fullscreen" type="button" title="Pantalla completa (F)" aria-label="Pantalla completa">⛶</button>
+    <a class="btn" id="standalone" href="01_c4-contexto.html" target="_blank" rel="noopener" title="Abrir esta vista en su propia pestaña">Abrir aparte ↗</a>
+  </div>
+</header>
+
+<div class="subbar">
+  <div>
+    <h1 id="view-title">—</h1>
+    <p id="view-sub">—</p>
+  </div>
+  <div class="facts">
+    <span class="pill accent" id="view-type">—</span>
+    <span>Fuente: <code id="view-src">—</code></span>
+    <a id="view-json" href="#">JSON</a>
+  </div>
+</div>
+
+<div class="notice" id="notice" role="status">
+  <span>Si el diagrama no aparece, el navegador puede estar bloqueando el incrustado local:</span>
+  <a id="notice-link" href="01_c4-contexto.html">Abrir la vista en su propia pestaña</a>
+</div>
+
+<main class="stage" id="stage"></main>
+
+<footer class="footer">
+  <span>Cada pestaña es un artefacto autónomo verificado contra el commit <code>088f6f0</code>; la fuente editable es el <code>.archify.json</code> de la misma carpeta.</span>
+  <span class="right">
+    <span><kbd>1</kbd>–<kbd>7</kbd> cambian de vista</span>
+    <span><kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> recorren las vistas</span>
+    <span><kbd>T</kbd> tema · <kbd>F</kbd> pantalla completa</span>
+  </span>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Las siete vistas entregadas. `file` es el artefacto HTML; `source` el JSON
+  // versionable que lo genera. El orden es el de lectura recomendado.
+  var VIEWS = [
+    {
+      id: "01_contexto",
+      num: "01",
+      label: "Contexto",
+      file: "01_c4-contexto.html",
+      source: "01_c4-contexto.archify.json",
+      type: "architecture",
+      title: "C4 nivel 1 · contexto",
+      subtitle: "Fuentes de datos, el sistema, áreas destinatarias y canales externos"
+    },
+    {
+      id: "02_contenedores",
+      num: "02",
+      label: "Contenedores",
+      file: "01_c4-contenedores.html",
+      source: "01_c4-contenedores.archify.json",
+      type: "architecture",
+      title: "C4 nivel 2 · contenedores",
+      subtitle: "CLI, orquestador, tareas, núcleo hexagonal, Excel COM y salidas"
+    },
+    {
+      id: "03_hexagonal",
+      num: "03",
+      label: "Hexagonal",
+      file: "02_arquitectura-hexagonal.html",
+      source: "02_arquitectura-hexagonal.archify.json",
+      type: "architecture",
+      title: "Arquitectura hexagonal",
+      subtitle: "Dependencias reales entre tasks, adapters, application y domain"
+    },
+    {
+      id: "04_inventario",
+      num: "04",
+      label: "Inventario",
+      file: "03_flujo-inventario.html",
+      source: "03_flujo-inventario.archify.json",
+      type: "sequence",
+      title: "Flujo de inventario",
+      subtitle: "De la exportación de BD al INVENTARIO ACTUALIZADO y el REPORTE_ELIMINACIONES"
+    },
+    {
+      id: "05_ventas",
+      num: "05",
+      label: "Ventas",
+      file: "03_flujo-ventas.html",
+      source: "03_flujo-ventas.archify.json",
+      type: "sequence",
+      title: "Flujo de ventas",
+      subtitle: "Backup, motor por VENTAS_MOTOR, Paso 10 en Excel COM y copia .xlsb"
+    },
+    {
+      id: "06_envio",
+      num: "06",
+      label: "Envío",
+      file: "03_flujo-envio.html",
+      source: "03_flujo-envio.archify.json",
+      type: "sequence",
+      title: "Envío del informe",
+      subtitle: "Capturas desde Excel, sesión de WhatsApp Web y envío por destinatario"
+    },
+    {
+      id: "07_paridad",
+      num: "07",
+      label: "Paridad",
+      file: "04_motor-paridad.html",
+      source: "04_motor-paridad.archify.json",
+      type: "workflow",
+      title: "Motor de reglas · prueba de paridad",
+      subtitle: "Legacy contra reglas con las mismas entradas y criterio de corte"
+    }
+  ];
+
+  var TYPE_LABELS = {
+    architecture: "arquitectura",
+    sequence: "secuencia",
+    workflow: "flujo de trabajo",
+    lifecycle: "ciclo de vida",
+    dataflow: "flujo de datos"
+  };
+
+  var MODE_PARAMS = { present: "present=1", embed: "embed=1", full: "" };
+
+  var store = {
+    get: function (key) {
+      try { return localStorage.getItem("archify-index:" + key); } catch (_) { return null; }
+    },
+    set: function (key, value) {
+      try { localStorage.setItem("archify-index:" + key, value); } catch (_) {}
+    }
+  };
+
+  var stage = document.getElementById("stage");
+  var tabsEl = document.getElementById("tabs");
+  var titleEl = document.getElementById("view-title");
+  var subEl = document.getElementById("view-sub");
+  var typeEl = document.getElementById("view-type");
+  var srcEl = document.getElementById("view-src");
+  var jsonEl = document.getElementById("view-json");
+  var themeBtn = document.getElementById("theme");
+  var themeLabel = document.getElementById("theme-label");
+  var standalone = document.getElementById("standalone");
+  var frames = Object.create(null);
+  var notice = document.getElementById("notice");
+  var noticeLink = document.getElementById("notice-link");
+  var loadTimer = null;
+
+  var savedMode = store.get("mode");
+  var savedTheme = store.get("theme");
+  var state = {
+    view: VIEWS[0],
+    mode: savedMode === "embed" || savedMode === "full" || savedMode === "present" ? savedMode : "present",
+    // Sin preferencia guardada cada vista resuelve su tema sola (preferencia del
+    // sistema); el toggle del índice fija un valor explícito para las siete.
+    theme: savedTheme === "light" || savedTheme === "dark" ? savedTheme : null
+  };
+
+  function effectiveTheme() {
+    if (state.theme) return state.theme;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+
+  function frameUrl(view) {
+    var params = new URLSearchParams();
+    if (state.mode === "present") params.set("present", "1");
+    if (state.mode === "embed") params.set("embed", "1");
+    if (state.theme) params.set("theme", state.theme);
+    var query = params.toString();
+    return view.file + (query ? "?" + query : "");
+  }
+
+  function syncFrames() {
+    // Solo se recargan las vistas ya visitadas: las demás siguen sin src para
+    // no cargar siete artefactos de ~780 KB de golpe.
+    Object.keys(frames).forEach(function (id) {
+      var frame = frames[id];
+      if (!frame.getAttribute("src")) return;
+      var view = byId(id);
+      if (view) frame.src = frameUrl(view);
+    });
+  }
+
+  function applyTheme() {
+    var theme = effectiveTheme();
+    document.documentElement.setAttribute("data-theme", theme);
+    themeLabel.textContent = theme === "dark" ? "Oscuro" : "Claro";
+    themeBtn.setAttribute("aria-pressed", theme === "light" ? "true" : "false");
+    themeBtn.title = state.theme ? "Cambiar tema (T)" : "Cambiar tema (T) — ahora sigue al sistema";
+    if (state.theme) store.set("theme", state.theme);
+    // Las vistas leen el tema antes de pintar: hay que recargar para propagarlo.
+    if (state.theme) syncFrames();
+  }
+
+  function byId(id) {
+    for (var i = 0; i < VIEWS.length; i++) if (VIEWS[i].id === id) return VIEWS[i];
+    return null;
+  }
+
+  function buildTabs() {
+    VIEWS.forEach(function (view) {
+      var tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "tab";
+      tab.setAttribute("role", "tab");
+      tab.id = "tab-" + view.id;
+      tab.setAttribute("aria-controls", "frame-" + view.id);
+      tab.innerHTML = '<span class="num">' + view.num + '</span><span>' + view.label + "</span>";
+      tab.addEventListener("click", function () { select(view.id); });
+      tabsEl.appendChild(tab);
+    });
+  }
+
+  function buildFrames() {
+    VIEWS.forEach(function (view) {
+      var frame = document.createElement("iframe");
+      frame.id = "frame-" + view.id;
+      frame.title = view.title + " — Generación de Insumos";
+      frame.hidden = true;
+      frame.setAttribute("data-view", view.id);
+      // Algunos navegadores bloquean iframes file:// dentro de file://. Si la
+      // vista activa no emite load a tiempo, se avisa y se ofrece el enlace directo.
+      frame.addEventListener("load", function () {
+        frame.dataset.loaded = "1";
+        if (frame === activeFrame()) hideNotice();
+      });
+      stage.appendChild(frame);
+      frames[view.id] = frame;
+    });
+  }
+
+  function activeFrame() {
+    return frames[state.view.id];
+  }
+
+  function hideNotice() {
+    notice.dataset.visible = "false";
+  }
+
+  function watchLoad(frame, view) {
+    clearTimeout(loadTimer);
+    loadTimer = setTimeout(function () {
+      if (frame.dataset.loaded === "1") return;
+      // Margen amplio: un artefacto de ~780 KB puede tardar en pintarse. El
+      // aviso se retira solo en cuanto la vista termina de cargar.
+      noticeLink.href = view.file;
+      notice.dataset.visible = "true";
+    }, 6000);
+  }
+
+  function select(id, options) {
+    var view = byId(id);
+    if (!view) { id = VIEWS[0].id; view = VIEWS[0]; }
+    state.view = view;
+
+    VIEWS.forEach(function (candidate) {
+      var active = candidate.id === view.id;
+      var frame = frames[candidate.id];
+      var tab = document.getElementById("tab-" + candidate.id);
+      frame.hidden = !active;
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+      tab.tabIndex = active ? 0 : -1;
+      if (!active) return;
+      // Con siete pestañas la barra puede desplazarse: mantener visible la activa.
+      if (tab.scrollIntoView) tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+      if (!frame.getAttribute("src")) frame.src = frameUrl(candidate);
+      watchLoad(frame, candidate);
+    });
+
+    titleEl.textContent = view.title;
+    subEl.textContent = view.subtitle;
+    typeEl.textContent = TYPE_LABELS[view.type] || view.type;
+    srcEl.textContent = view.source;
+    jsonEl.href = view.source;
+    jsonEl.title = "Abrir la fuente " + view.source;
+    standalone.href = view.file;
+
+    if (!options || options.updateHash !== false) {
+      if (location.hash !== "#" + view.id) {
+        history.replaceState(null, "", "#" + view.id);
+      }
+    }
+    document.title = view.title + " — Generación de Insumos";
+  }
+
+  function toggleTheme() {
+    state.theme = effectiveTheme() === "dark" ? "light" : "dark";
+    applyTheme();
+  }
+
+  function step(delta) {
+    var index = VIEWS.indexOf(state.view);
+    var next = (index + delta + VIEWS.length) % VIEWS.length;
+    select(VIEWS[next].id);
+  }
+
+  function setMode(mode) {
+    if (!MODE_PARAMS[mode] && mode !== "full") return;
+    state.mode = mode;
+    store.set("mode", mode);
+    Array.prototype.forEach.call(document.querySelectorAll(".segmented button"), function (button) {
+      button.setAttribute("aria-pressed", button.dataset.mode === mode ? "true" : "false");
+    });
+    // El modo cambia el layout al cargar: recargar los marcos ya abiertos.
+    syncFrames();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".segmented button"), function (button) {
+    button.addEventListener("click", function () { setMode(button.dataset.mode); });
+  });
+
+  document.getElementById("prev").addEventListener("click", function () { step(-1); });
+  document.getElementById("next").addEventListener("click", function () { step(1); });
+  themeBtn.addEventListener("click", toggleTheme);
+  document.getElementById("fullscreen").addEventListener("click", function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  });
+
+  window.addEventListener("hashchange", function () {
+    select(location.hash.replace("#", "") || VIEWS[0].id, { updateHash: false });
+  });
+
+  document.addEventListener("keydown", function (event) {
+    var target = event.target;
+    if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+    // Con el foco dentro de un iframe las teclas las atiende la vista, no el índice.
+    if (target && target.tagName === "IFRAME") return;
+    if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); step(1); return; }
+    if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); step(-1); return; }
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (/^[1-7]$/.test(event.key)) { event.preventDefault(); select(VIEWS[Number(event.key) - 1].id); return; }
+    if (event.key === "t" || event.key === "T") { toggleTheme(); return; }
+    if (event.key === "f" || event.key === "F") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    }
+  });
+
+  buildTabs();
+  buildFrames();
+  setMode(state.mode);
+  applyTheme();
+  var initial = location.hash.replace("#", "");
+  select(byId(initial) ? initial : VIEWS[0].id);
+})();
+</script>
+</body>
+</html>
