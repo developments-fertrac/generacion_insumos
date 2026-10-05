@@ -1,6 +1,6 @@
 # 02 · Arquitectura hexagonal
 
-> Fuente: comunidades 1 (Reglas de negocio puras), 5 (Motor de reglas y auditoría), 6 (Motor dual de ventas), 7 (Caso de uso inventario BD), 8 (Contrato YAML y registro), 11 (Regla de dependencia hexagonal) y GRAPH_REPORT §6.
+> Fuente: comunidades «Puertos del dominio», «RulePipeline declarativo», «Registro de reglas», «Caso de uso inventario y pipeline», «Motor dual (VENTAS_MOTOR)», «Regla de dependencia e import-linter» y «Columnas de ventas y desvío de capas» de `graphify-out/GRAPH_REPORT.md`.
 
 ## 1. Capas y regla de dependencia
 
@@ -11,7 +11,9 @@
 | Adaptadores | `src/insumos/adapters` | Aplicación, dominio, librerías de infraestructura | Legacy por convención (README) | contrato 1 (capas). **No existe contrato que prohíba `adapters → tasks/core/config`** |
 | Legacy / orquestación | `run.py`, `orchestrator.py`, `tasks/`, `core/`, `config/` | Todo | — | ratchet de tipos (`scripts_ratchet_types`) |
 
-Resultado medido sobre el grafo (GRAPH_REPORT §6): **0 aristas** dominio→{aplicación, adaptadores, tasks, core, config}, **0** aplicación→adaptadores y **0** adaptadores→{tasks, core}. La regla de dependencia se cumple.
+Resultado medido sobre las aristas `imports` de `graph.json`: **0 aristas** dominio→{aplicación, adaptadores, tasks, core, config}, **0** aplicación→adaptadores y **0** adaptadores→{tasks, core}. La regla de dependencia se cumple.
+
+> **Diagrama interactivo** (Archify, verificado contra `088f6f0`): [abrir en el índice](diagramas/main.html#03_hexagonal) · [abrir aparte](diagramas/02_arquitectura-hexagonal.html). El bloque Mermaid de abajo es la versión resumida para leer en GitHub/VS Code.
 
 ```mermaid
 flowchart LR
@@ -29,7 +31,7 @@ flowchart LR
       UCV["TransformarVentas"]
     end
     subgraph DOM["insumos.domain"]
-      PORTS["ports: FuenteInventario · EscritorInventario ·<br/>EscritorReporte · FuenteVentas · EntradasVentas"]
+      PORTS["ports: FuenteInventario · EscritorInventario ·<br/>EscritorReporte · FuenteVentas (sin adaptador) · EntradasVentas"]
       PIPE["pipeline: RulePipeline · reglas_declarativas"]
       RULES["rules: ReglaBase · registry · inventario/* · ventas/*"]
       AUD["audit: AuditTrail"]
@@ -48,14 +50,14 @@ flowchart LR
 
 | Elemento | Rol | Evidencia |
 |---|---|---|
-| `ReglaBase` | Contrato único de regla (`id`, `description` como `ClassVar`, `apply(df, ctx) -> RuleResult`) | `src/insumos/domain/rules/base.py` · `src_insumos_domain_rules_base_reglabase` (god node, grado 52) |
-| `RuleContext` | Datos de referencia de solo lectura (`tablas`, `inventario_bd`, `matriz_usd`, `distribucion`, `hoy`, `params`) | `src/insumos/domain/rules/base.py:L34` · `src_insumos_domain_rules_base_rulecontext` (god node, grado 112) |
+| `ReglaBase` | Contrato único de regla (`id`, `description` como `ClassVar`, `apply(df, ctx) -> RuleResult`) | `src/insumos/domain/rules/base.py` · `src_insumos_domain_rules_base_reglabase` (god node, grado 54) |
+| `RuleContext` | Datos de referencia de solo lectura (`tablas`, `inventario_bd`, `matriz_usd`, `distribucion`, `hoy`, `params`) | `src/insumos/domain/rules/base.py:L34` · `src_insumos_domain_rules_base_rulecontext` (god node, grado 110) |
 | `RuleResult` | Salida auditable: `df`, `removed`, `modified`, `warnings`, `metrics` | `src/insumos/domain/rules/base.py:L59` · `src_insumos_domain_rules_base_ruleresult` |
 | Registro `@rule(id)` | Mapa id→clase; valida `description`/`apply` e ids únicos al importar | `src/insumos/domain/rules/registry.py:L41` · `src_insumos_domain_rules_registry_rule`; `construir()` rechaza parámetros inesperados (`src_insumos_domain_rules_registry_construir`) |
 | Declaración YAML | Valida forma; pipeline vacío = error explícito | `src/insumos/domain/reglas_declarativas.py:L85` · `src_insumos_domain_reglas_declarativas_leer_declaracion`; `src_insumos_domain_reglas_declarativas_configuracioninvalida` |
 | `RulePipeline` | Ejecuta reglas en orden YAML; propaga excepciones como `ErrorDePipeline`; registra auditoría y tiempo por regla | `src/insumos/domain/pipeline.py:L57` · `src_insumos_domain_pipeline_rulepipeline_run`; `from_yaml` L119 |
 | `AuditTrail` | Pasos + eliminaciones con `_motivo`/`_regla`; tablas para reportes | `src/insumos/domain/audit.py:L39` · `src_insumos_domain_audit_audittrail` |
-| Reglas | 11 `inv.*` (inventario_bd + inventario) y 20 `ven.*` | comunidad 1; ver `04_motor_de_reglas_ventas.md` y `05_reglas_de_negocio.md` |
+| Reglas | 11 `inv.*` (inventario_bd + inventario) y 20 `ven.*` | comunidades «Reglas YAML de inventario», «Reglas de actualización de inventario», «Reglas YAML de ventas», «Integraciones de ventas»; ver `04_motor_de_reglas_ventas.md` y `05_reglas_de_negocio.md` |
 
 ## 3. Casos de uso (aplicación)
 

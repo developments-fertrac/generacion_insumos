@@ -1,22 +1,22 @@
 # 06 · Decisiones de arquitectura (ADR)
 
-> Fuente: nodos `rationale` `docs_adr_0001_*` … `docs_adr_0010_*` y `docs_adr_readme`.
+> Fuente: texto de los ADR recuperado de `5e249ec`. **Los ADR no forman parte del grafo**: el grafo se genera sobre `HEAD` (`088f6f0`) y ahí `docs/adr/` no existe. Lo que sí está en el grafo es la implementación de cada decisión (nodos de código y conceptos re-anclados al código, citados en cada ADR).
 > **Advertencia de trazabilidad**: en la rama `main` (`088f6f0`) **no existe** `docs/adr/`. El commit `86f7093` ("Eliminacion de documentacion obsoleta") borró ADR 0005–0010 y su índice; el texto se recuperó de `5e249ec`. ADR 0001–0004 nunca tuvieron archivo: solo una fila en el índice. README, `tasks/__init__.py`, `tasks/actualizacion_inventario.py` (docstring) y `scripts/publicar_a_produccion.ps1` siguen apuntando a `docs/adr/` (nodo `readme_pendiente_docs_adr_eliminados`).
 
 ## 1. Índice
 
-| ADR | Título | Estado | Fecha | Archivo en la rama | Nodo |
+| ADR | Título | Estado | Fecha | Archivo en la rama | Nodo en el grafo |
 |---|---|---|---|---|---|
-| 0001 | Migración incremental (strangler fig), no reescritura | Aceptada | **[NO VERIFICADO]** | No (solo índice) | `docs_adr_0001_strangler_fig` |
-| 0002 | pandas (+pandera) como portador de datos del dominio | Aceptada; pandera retirado por 0010 | **[NO VERIFICADO]** | No (solo índice) | `docs_adr_0002_pandas_dominio` |
-| 0003 | Orden de reglas en YAML, no en Python | Aceptada | **[NO VERIFICADO]** | No (solo índice) | `docs_adr_0003_orden_reglas_yaml` |
-| 0004 | COM se queda en fase 1; openpyxl se evalúa en fase 6 | Aceptada | **[NO VERIFICADO]** | No (solo índice) | `docs_adr_0004_com_fase1` |
-| 0005 | Git como único historial | Aceptada (Fase 0) | 2026-10-01 | No (historial) | `docs_adr_0005_git_unico_historial` |
-| 0006 | Estado operativo fuera del repositorio | Aceptada (Fase 0) | 2026-10-01 | No (historial) | `docs_adr_0006_estado_operativo_fuera` |
-| 0007 | Ratchet de tipos sobre el legacy; mypy estricto en código nuevo | Aceptada (Fase 0) | 2026-10-01 (rev.) | No (historial) | `docs_adr_0007_ratchet_tipos` |
-| 0008 | La base de datos reemplaza la descarga Selenium del ERP | Aceptada | 2026-10-02 | No (historial) | `docs_adr_0008_fuente_base_de_datos` |
-| 0009 | Ventas: pipeline de reglas con motor dual hasta probar paridad | Aceptada | 2026-10-02 | No (historial) | `docs_adr_0009_motor_dual_ventas` |
-| 0010 | Cierre de hallazgos de la auditoría (modifica 0002) | Aceptada | 2026-10-05 | No (historial) | `docs_adr_0010_cierre_hallazgos` |
+| 0001 | Migración incremental (strangler fig), no reescritura | Aceptada | **[NO VERIFICADO]** | No (solo índice) | — (no está en `HEAD`) |
+| 0002 | pandas (+pandera) como portador de datos del dominio | Aceptada; pandera retirado por 0010 | **[NO VERIFICADO]** | No (solo índice) | — (no está en `HEAD`) |
+| 0003 | Orden de reglas en YAML, no en Python | Aceptada | **[NO VERIFICADO]** | No (solo índice) | — (no está en `HEAD`) |
+| 0004 | COM se queda en fase 1; openpyxl se evalúa en fase 6 | Aceptada | **[NO VERIFICADO]** | No (solo índice) | — (no está en `HEAD`) |
+| 0005 | Git como único historial | Aceptada (Fase 0) | 2026-10-01 | No (historial) | — (no está en `HEAD`) |
+| 0006 | Estado operativo fuera del repositorio | Aceptada (Fase 0) | 2026-10-01 | No (historial) | — (no está en `HEAD`) |
+| 0007 | Ratchet de tipos sobre el legacy; mypy estricto en código nuevo | Aceptada (Fase 0) | 2026-10-01 (rev.) | No (historial) | — (no está en `HEAD`) |
+| 0008 | La base de datos reemplaza la descarga Selenium del ERP | Aceptada | 2026-10-02 | No (historial) | — (no está en `HEAD`) |
+| 0009 | Ventas: pipeline de reglas con motor dual hasta probar paridad | Aceptada | 2026-10-02 | No (historial) | — (no está en `HEAD`) |
+| 0010 | Cierre de hallazgos de la auditoría (modifica 0002) | Aceptada | 2026-10-05 | No (historial) | — (no está en `HEAD`) |
 
 Decisiones del plan sin ADR (índice, sección final): composition root manual en `bootstrap.py` (no existe en el grafo: `src_insumos_domain_rules_registry_deuda_bootstrap_inexistente`), pandera `lazy=True` (obsoleta por 0010), eliminaciones por filtrado del DataFrame, evaluación de Prefect/Dagster.
 
@@ -49,13 +49,13 @@ Decisiones del plan sin ADR (índice, sección final): composition root manual e
 
 ### ADR 0006 — Estado operativo fuera del repo
 - **Decisión**: `STATE_DIR` / `LOGS_DIR` (por defecto `%LOCALAPPDATA%\GeneracionInsumos`); `.gitignore` cubre estado y datos.
-- **Consecuencias**: repo liviano; sesión de WhatsApp fuera de git. Pendiente: `chromedriver.exe` sigue en la raíz (`docs_adr_0006_estado_operativo_fuera_deuda_chromedriver_raiz`).
+- **Consecuencias**: repo liviano; sesión de WhatsApp fuera de git. Pendiente: `chromedriver.exe` sigue en la raíz (`core_chromedriver_utils_deuda_chromedriver_raiz`).
 - **Implementación**: `core_logger` (INFERRED 0.95), `core_chromedriver_utils` (INFERRED 0.85); variables `env_state_dir`, `env_logs_dir`.
 
 ### ADR 0007 — Ratchet de tipos
 - **Decisión**: mypy estricto en `src/` y `tests/`; legacy medido con `scripts/ratchet_types.py` contra `quality-baseline.json` (hoy **12** errores, re-lineado 2026-10-05).
 - **Consecuencias**: dos configuraciones mypy (`pyproject.toml`, `mypy-legacy.toml`); funciones legacy sin anotar no se revisan.
-- **Implementación**: `scripts_ratchet_types`, `quality_baseline`, `mypy_legacy` (comunidad 13).
+- **Implementación**: `scripts_ratchet_types`, `quality_baseline`, `mypy_legacy` (comunidad «Ratchet de tipos»).
 
 ### ADR 0008 — Fuente base de datos
 - **Decisión**: retirar descargas Selenium; inventario reescrito con `inventario_bd.yaml` + `inventario.yaml`; ventas cambia solo carpeta y selección del `_268`; ventas toma líneas del inventario actualizado.
@@ -68,7 +68,7 @@ Decisiones del plan sin ADR (índice, sección final): composition root manual e
 - **Implementación**: hiperarista `he_motor_dual_paridad`; ver `04_motor_de_reglas_ventas.md`.
 
 ### ADR 0010 — Cierre de hallazgos de auditoría
-- **Decisión**: un correo por corrida; hora Colombia; solo procesos propios; retiro de código y dependencias sin uso (pandera, PyMuPDF, `HEADLESS`); nombres de hoja únicos; logs saneados con huella.
+- **Decisión**: un correo por ejecución de tarea (`BaseTask.run`); hora Colombia; solo procesos propios; retiro de código y dependencias sin uso (pandera, PyMuPDF, `HEADLESS`); nombres de hoja únicos; logs saneados con huella.
 - **Consecuencias**: el envío depende de leer el command line de procesos (psutil o PowerShell/CIM). Pendientes: re-linear ratchet (hecho, base 12) y `uv lock` con red.
 - **Implementación**: `tasks_base_task_basetask_run`, `tasks_envio_informe_ventas_cerrar_chrome_del_perfil`, `src_insumos_adapters_excel_reporte_inventario_nombres_de_hoja`, `tests_unit_test_hallazgos_auditoria` (EXTRACTED).
 

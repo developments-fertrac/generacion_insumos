@@ -1,6 +1,6 @@
 # Documentación de arquitectura — Generación de Insumos
 
-Generada el 2026-10-05 sobre la rama `main` (commit `088f6f0`) a partir de `graphify-out/graph.json` y `graphify-out/GRAPH_REPORT.md` (1.183 nodos, 2.760 aristas, 16 comunidades, 93,8 % EXTRACTED).
+Generada el 2026-10-05 sobre la rama `main` (commit `088f6f0`) a partir de `graphify-out/graph.json` y `graphify-out/GRAPH_REPORT.md` (1.389 nodos, 3.263 aristas, 69 comunidades, 91 % EXTRACTED; graphify 0.9.77 oficial).
 
 | Documento | Contenido |
 |---|---|

@@ -562,7 +562,7 @@
    "col": 2,
    "type": "backend",
    "label": "Motor de reglas",
-   "sublabel": "ventas.yaml · 21 reglas",
+   "sublabel": "20 reglas · 21 entradas",
    "sources": [
     {
      "path": "scripts/comparar_ventas.py",

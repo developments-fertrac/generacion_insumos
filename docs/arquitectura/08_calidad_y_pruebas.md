@@ -1,6 +1,6 @@
 # 08 · Calidad y pruebas
 
-> Fuente: nodos de `tests/` (comunidades 5, 8, 9, 10, 11, 12, 14), `pyproject.toml` (`pyproject`), `.importlinter` (`importlinter_contract_1..5`), `scripts_ratchet_types`, `quality_baseline`.
+> Fuente: nodos de `tests/` (comunidades «AuditTrail y tests del motor», «Tests de reglas declarativas y BD», «Paridad de ventas», «Comparador de resultados», «Regla de dependencia e import-linter», «Fixtures de pruebas»), `pyproject.toml` (`pyproject`), `.importlinter` (`importlinter_contract_1..5`), `scripts_ratchet_types`, `quality_baseline`.
 > No hay reporte de cobertura en el repositorio: la cobertura de este documento es **estructural** (aristas estáticas pruebas → código). El porcentaje de líneas **[NO VERIFICADO]**.
 
 ## 1. Estrategia
@@ -22,20 +22,20 @@ Política de pruebas (`tests/conftest.py` · `tests_conftest`; `tests/unit/rules
 
 | Archivo | Funciones `test_*` | Marcador | Qué protege | Comunidad |
 |---|---|---|---|---|
-| `tests/unit/rules/test_motor.py` | 33 | — (sin marcador de módulo) | Registro, `RulePipeline`, `AuditTrail`, `RuleContext`, `RuleResult` | 5 |
-| `tests/unit/test_golden.py` | 32 | unit | Comparador por clave y `ExcelReader` (cifrado en memoria) | 9 / 0 |
-| `tests/unit/rules/test_reglas_inventario_bd.py` | 19 | unit | 11 reglas `inv.*` y pipelines BD/plantilla | 5 |
-| `tests/unit/rules/test_reglas_declarativas.py` | 12 | unit | Contrato YAML, pipeline vacío, convención de ids, YAML reales resueltos | 8 |
-| `tests/unit/rules/test_paridad_ventas.py` | 11 | unit | Paridad legacy↔reglas, ajustes N1–N3, auditoría de eliminaciones | 6 |
-| `tests/unit/test_hallazgos_auditoria.py` | 8 | unit | Regresión ADR 0010 (un correo, hora Colombia, procesos propios) | 10 |
-| `tests/unit/adapters/test_com_inventario_puro.py` | 6 | unit | Funciones puras del escritor COM | 0 |
-| `tests/unit/test_pipeline_legacy.py` | 5 | unit | `TASK_REGISTRY`, workflows, `Orchestrator` | 2 |
-| `tests/unit/test_seguridad.py` | 4 | unit | Huella y `FiltroSecretos` | 2 |
-| `tests/contract/test_regla_dependencia.py` | 3 (parametrizadas por módulo) | — | Imports prohibidos en dominio/aplicación | 11 |
-| `tests/unit/test_dias_venta.py` | 3 | unit | Festivos y días de venta (hora Colombia) | 3 |
-| `tests/unit/test_clave_actualizacion.py` | 3 | unit | Clave del área y transición | 3 |
-| `tests/unit/adapters/test_reporte_inventario.py` | 3 | unit | Nombres de hoja únicos (hallazgo 10) | 7 |
-| `tests/contract/test_escritor_com_simulado.py` | 1 | contract | Proyección COM sobre hoja simulada | 12 |
+| `tests/unit/rules/test_motor.py` | 33 | — (sin marcador de módulo) | Registro, `RulePipeline`, `AuditTrail`, `RuleContext`, `RuleResult` | AuditTrail y tests del motor |
+| `tests/unit/test_golden.py` | 32 | unit | Comparador por clave y `ExcelReader` (cifrado en memoria) | Comparador de resultados |
+| `tests/unit/rules/test_reglas_inventario_bd.py` | 19 | unit | 11 reglas `inv.*` y pipelines BD/plantilla | Tests de reglas declarativas y BD |
+| `tests/unit/rules/test_reglas_declarativas.py` | 12 | unit | Contrato YAML, pipeline vacío, convención de ids, YAML reales resueltos | Tests de reglas declarativas y BD |
+| `tests/unit/rules/test_paridad_ventas.py` | 11 | unit | Paridad legacy↔reglas, ajustes N1–N3, auditoría de eliminaciones | Paridad de ventas |
+| `tests/unit/test_hallazgos_auditoria.py` | 8 | unit | Regresión ADR 0010 (un correo, hora Colombia, procesos propios) | Settings y hallazgos de auditoría |
+| `tests/unit/adapters/test_com_inventario_puro.py` | 6 | unit | Funciones puras del escritor COM | Tests COM puro |
+| `tests/unit/test_pipeline_legacy.py` | 5 | unit | `TASK_REGISTRY`, workflows, `Orchestrator` | BaseTask y registro de tareas |
+| `tests/unit/test_seguridad.py` | 4 | unit | Huella y `FiltroSecretos` | Seguridad, secretos y docx |
+| `tests/contract/test_regla_dependencia.py` | 3 (parametrizadas por módulo) | — | Imports prohibidos en dominio/aplicación | Regla de dependencia e import-linter |
+| `tests/unit/test_dias_venta.py` | 3 | unit | Festivos y días de venta (hora Colombia) | Días de venta y festivos |
+| `tests/unit/test_clave_actualizacion.py` | 3 | unit | Clave del área y transición | Clave del archivo de actualización |
+| `tests/unit/adapters/test_reporte_inventario.py` | 3 | unit | Nombres de hoja únicos (hallazgo 10) | Nombres de hojas del reporte |
+| `tests/contract/test_escritor_com_simulado.py` | 1 | contract | Proyección COM sobre hoja simulada | Caso de uso inventario y pipeline |
 | **Total** | **143 funciones** (220 casos ejecutados con parametrización, según docx/ADR 0010) | | | |
 
 ## 3. Cobertura estructural por módulo de producción

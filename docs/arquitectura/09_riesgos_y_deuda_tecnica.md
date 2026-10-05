@@ -1,6 +1,6 @@
 # 09 · Riesgos y deuda técnica
 
-> Fuente: nodos `concept` de pendientes/riesgos (GRAPH_REPORT §7), god nodes (§2), conexiones sorprendentes (§3.1) y verificación de la regla de dependencia (§6).
+> Fuente: nodos `concept` de pendientes/riesgos, «God Nodes» y «Surprising Connections» de `GRAPH_REPORT.md`, y aristas `imports` entre capas de `graph.json`.
 > Escala: Probabilidad (P) e Impacto (I) de 1 a 5; Exposición = P × I.
 
 ## 1. Matriz de riesgos
@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|---|---|
 | R1 | **Oráculo de paridad no independiente**: el legacy usa `texto_licitado`, `normalizar_referencia`, `descuento_a_decimal` del dominio; un defecto común pasa la paridad | `tasks/actualizacion_ventas.py:L2474`, `L27` · `tasks_actualizacion_ventas_actualizacionventas_transformar_legacy` → `src_insumos_domain_rules_ventas_columnas_texto_licitado` | 3 | 4 | **12** | Casos de negocio firmados por Control de Ventas como pruebas tabulares; golden real anonimizado | Tabla de casos aprobada + golden verde |
 | R2 | **Éxito silencioso sin COM**: si `HAS_COM=False`, Paso 10 y post-proceso se omiten y la tarea envía `[OK]` | `tasks/actualizacion_ventas.py` (`_ejecutar`, `if HAS_COM:`) · `tasks_actualizacion_ventas_riesgo_paso10_omitido_sin_com`; `core/excel_processing.py` · `core_excel_processing` | 2 | 5 | **10** | `raise RuntimeError` si no hay COM o si `tmp_out_path` no existe tras el Paso 10 | Prueba que exige fallo con `HAS_COM=False` |
-| R3 | **`uv.lock` eliminado** con `.bat` en `uv run --frozen` y publicación que copia `uv.lock` | commit `088f6f0`; `scripts/publicar_a_produccion.ps1` · `scripts_publicar_a_produccion_ps1`; `readme_pendiente_uv_lock` | 4 | 4 | **16** | `uv lock` con red, versionar, publicar | `uv run --frozen python run.py --list` OK en producción |
+| R3 | **`uv.lock` eliminado** con `.bat` en `uv run --frozen` y publicación que copia `uv.lock` | commit `088f6f0`; `scripts/publicar_a_produccion.ps1` · `scripts_publicar_a_produccion`; `readme_pendiente_uv_lock` | 4 | 4 | **16** | `uv lock` con red, versionar, publicar | `uv run --frozen python run.py --list` OK en producción |
 | R4 | **Dependencia de Excel COM y sesión interactiva** (Paso 10 ventas, escritor de inventario, capturas del envío) | `src_insumos_adapters_excel_com_inventario_escritorinventariocom`; `tasks_actualizacion_ventas_actualizacionventas_com_write_df_into_template`; `tasks_envio_informe_ventas_capturar_multiples_rangos`; `readme_sesion_interactiva` | 3 | 4 | **12** | Corto plazo: monitoreo de sesión y reintentos COM existentes. Mediano: Fase 6 openpyxl para escritura (ADR 0004) donde no haya tablas dinámicas | Escritura de inventario sin COM certificada con `comparar_estructura.py` |
 | R5 | **Contraseñas en historial git** (logs, documentos y pruebas antiguas) | `docs_documentacion_generacion_de_insumos_pendiente_rotar_contrasenas`; ADR 0010 §7 | 3 | 5 | **15** | Rotar `EXCEL_PASSWORD`, `VENTAS_ACTUALIZACION_PASSWORD`, `SMTP_PASSWORD`; evaluar `git filter-repo` | Contraseñas rotadas y verificadas |
 | R6 | **Scripts de validación con contraseñas en código** (`Archivos Validacion/`, fuera de git) | `docs_documentacion_generacion_de_insumos_pendiente_scripts_validacion_contrasenas` | 3 | 4 | **12** | Migrar a `.env` o retirar si la tarea programada ya no existe | Búsqueda sin coincidencias |
@@ -26,12 +26,12 @@
 
 | Elemento | Métrica | Problema | Acción |
 |---|---|---|---|
-| `ActualizacionVentas` (`tasks_actualizacion_ventas_actualizacionventas`) | Grado 79; 72 callables; ~2.660 líneas; mayor betweenness de archivo (`tasks_actualizacion_ventas`, 0,20) | Lectura, motor legacy, Paso 10, post-proceso y notificación en una clase | Fase 4b: `FuenteVentasArchivos`; Paso 10 a `adapters/excel/com_ventas.py` (puerto `EscritorVentas`) |
-| `RuleContext` (`src_insumos_domain_rules_base_rulecontext`) | Grado 112 (máximo); betweenness 0,12 | Contexto "bolsa" con campos del modelo ERP retirado | Retirar `marcas_propias`, `remisiones`, `valorizados` (`src_insumos_domain_rules_base_deuda_campos_erp_retirados`); evaluar contextos tipados por dominio |
+| `ActualizacionVentas` (`tasks_actualizacion_ventas_actualizacionventas`) | Grado 79; 72 callables; ~2.660 líneas; mayor betweenness entre archivos del proyecto (`tasks_actualizacion_ventas`, 0,12) | Lectura, motor legacy, Paso 10, post-proceso y notificación en una clase | Fase 4b: `FuenteVentasArchivos`; Paso 10 a `adapters/excel/com_ventas.py` (puerto `EscritorVentas`) |
+| `RuleContext` (`src_insumos_domain_rules_base_rulecontext`) | Grado 110 (máximo); betweenness 0,09 | Contexto "bolsa" con campos del modelo ERP retirado | Retirar `marcas_propias`, `remisiones`, `valorizados` (`src_insumos_domain_rules_base_deuda_campos_erp_retirados`); evaluar contextos tipados por dominio |
 | `RuleResult` / `ReglaBase` / `rule()` | Grados 88 / 52 / 44 | Contrato central (esperable) | Mantener estable; cambios solo con ADR |
-| `ExcelReader` (`src_insumos_adapters_excel_lector_excelreader`) | Grado 40; puerto `LectorExcel` en adaptadores | Puerto mal ubicado | Mover el Protocol a `domain/ports.py` |
+| `ExcelReader` (`src_insumos_adapters_excel_lector_excelreader`) | Grado 35; puerto `LectorExcel` en adaptadores | Puerto mal ubicado | Mover el Protocol a `domain/ports.py` |
 | `_log()` del envío (`tasks_envio_informe_ventas_log`) | Grado 29 | Logger ad hoc paralelo a `core.logger` | Fase 5 |
-| `Settings` (`config_settings_settings`) | Grado 28; `core` → `config` (8 aristas) | Infraestructura acoplada a configuración global | Inyectar configuración en adaptadores de `notify` (Fase 5) |
+| `Settings` (`config_settings_settings`) | Grado 23; `core` → `config` (4 aristas `imports`) | Infraestructura acoplada a configuración global | Inyectar configuración en adaptadores de `notify` (Fase 5) |
 | `escritor_openpyxl` → `com_inventario._cifrar` | Arista lateral a privado | Dry-run arrastra el módulo COM | Extraer `cifrado.py` |
 | `scripts/comparar_ventas.py` → `ActualizacionVentas` (privado) | Arista a privado | El script se rompe al retirar el legacy | Re-apuntar a `FuenteVentas` en Fase 4b |
 | `_cargar_modulos_de_reglas` | 0 llamadores | Código muerto / composición implícita por import | Eliminar o invocar desde una raíz de composición explícita |

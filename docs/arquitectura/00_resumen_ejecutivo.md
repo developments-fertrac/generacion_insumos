@@ -1,6 +1,6 @@
 # 00 · Resumen ejecutivo — Generación de Insumos
 
-> Fuente única de verdad: `graphify-out/graph.json` y `graphify-out/GRAPH_REPORT.md` (rama `main`, commit `088f6f0`, 1.183 nodos, 2.760 aristas, 16 comunidades).
+> Fuente única de verdad: `graphify-out/graph.json` y `graphify-out/GRAPH_REPORT.md` (rama `main`, commit `088f6f0`, 1.389 nodos, 3.263 aristas, 69 comunidades; graphify 0.9.77 oficial).
 > Convención de citas: `archivo:Lnn` · nodo `id_del_grafo`. Lo que el grafo no confirma se marca **[NO VERIFICADO]**.
 
 ## 1. Propósito de negocio
@@ -8,8 +8,8 @@
 Generación de Insumos es el pipeline del Área de Datos de Fertrac que convierte las **exportaciones diarias de la base de datos corporativa** en los dos libros consolidados con los que opera el negocio: el **Inventario General** y las **Ventas 2026**. Además distribuye el **informe diario de ventas por WhatsApp** a la gerencia comercial.
 
 - Contrato de ejecución: `run.py` → `orchestrator.py` → `BaseTask.run()` (nodos `run`, `orchestrator_orchestrator`, `tasks_base_task_basetask_run`; `tasks/base_task.py:L21`).
-- Fuente de datos: carpeta `DB_EXPORT_DIR` con `Inventario.xlsx` e `InformesDeVentas(Facturas)_268*.xlsx`, que reemplazó las descargas Selenium del ERP (nodo `docs_adr_0008_fuente_base_de_datos`; `config/settings.py:L83` · `config_settings_pathsconfig`).
-- Restricción de producto: la salida debe **preservar hojas, formatos, títulos y fórmulas** del proceso anterior (nodo `proyecto_estado_migracion_preservacion_salida`), por eso la escritura final se hace con **Excel COM** (nodos `src_insumos_adapters_excel_com_inventario_escritorinventariocom`, `tasks_actualizacion_ventas_actualizacionventas_com_write_df_into_template`).
+- Fuente de datos: carpeta `DB_EXPORT_DIR` con `Inventario.xlsx` e `InformesDeVentas(Facturas)_268*.xlsx`, que reemplazó las descargas Selenium del ERP (nodo ADR 0008 (archivo eliminado en `86f7093`); `config/settings.py:L83` · `config_settings_pathsconfig`).
+- Restricción de producto: la salida debe **preservar hojas, formatos, títulos y fórmulas** del proceso anterior (nodo `tasks_actualizacion_inventario_preservacion_salida`), por eso la escritura final se hace con **Excel COM** (nodos `src_insumos_adapters_excel_com_inventario_escritorinventariocom`, `tasks_actualizacion_ventas_actualizacionventas_com_write_df_into_template`).
 
 ## 2. Usuarios y áreas consumidoras
 
@@ -19,7 +19,7 @@ Generación de Insumos es el pipeline del Área de Datos de Fertrac que conviert
 | Control de Ventas (dueña de `$2026 VENTAS_Actualizacion.xlsx`, con contraseña propia) | Libro de ventas protegido | `tasks/actualizacion_ventas.py:L187` · `tasks_actualizacion_ventas_actualizacionventas_password_actualizacion` |
 | Áreas comerciales / usuarios finales | Copia liviana `$2026 VENTAS_<fecha>.xlsb` | `tasks/actualizacion_ventas.py:L2095` · `tasks_actualizacion_ventas_actualizacionventas_guardar_copia_xlsb` |
 | Gerencia comercial | 4 imágenes + mensaje "VTAS <MES> MG NETO PONDERADO" por WhatsApp | `tasks/envio_informe_ventas.py:L1626` · `tasks_envio_informe_ventas_envioinformeventas_execute` |
-| Área de Datos (operación) | Correos `[OK]`/`[ERROR]` con log adjunto, logs por tarea | `tasks/base_task.py:L21` · nodo `docs_adr_0010_cierre_hallazgos_notificacion_unica` |
+| Área de Datos (operación) | Correos `[OK]`/`[ERROR]` con log adjunto, logs por tarea | `tasks/base_task.py:L21` · nodo `tasks_base_task_notificacion_por_tarea` |
 
 ## 3. Valor operativo
 
@@ -38,9 +38,9 @@ Generación de Insumos es el pipeline del Área de Datos de Fertrac que conviert
 |---|---|---|---|
 | `actualizacion_inv` | **Migrada** (raíz de composición + caso de uso + adaptadores). Corrida real 2026-10-02 | Hiperarista `he_composicion_inventario`; `tasks/actualizacion_inventario.py:L63` · `tasks_actualizacion_inventario_actualizacioninventario_construir` | Certificar en producción (operativo) |
 | `actualizacion_ventas` | **Fase 4 — motor dual**; defecto `VENTAS_MOTOR=legacy` | Hiperarista `he_motor_dual_paridad`; `env_ventas_motor` | Paridad real → `reglas` → Fase 4b (`readme_pendiente_fase_4b`) |
-| `envio_informe_ventas` | **Legacy** (Selenium + COM + portapapeles) | Comunidad 4 "Envío WhatsApp y ChromeDriver"; `readme_pendiente_fase_5` | Fase 5 |
+| `envio_informe_ventas` | **Legacy** (Selenium + COM + portapapeles) | comunidades «WhatsApp Web (Selenium)» y «Envío: procesos y puertos»; `readme_pendiente_fase_5` | Fase 5 |
 | Descargas Selenium del ERP | **Retiradas** (ADR 0008) | `scripts/publicar_a_produccion.ps1` borra los módulos viejos en destino | — |
-| Regla de dependencia | **0 violaciones** en `src/insumos` | GRAPH_REPORT §6 | Mantener `lint-imports` en CI **[NO VERIFICADO: no hay pipeline de CI en el repo]** |
+| Regla de dependencia | **0 violaciones** en `src/insumos` | aristas `imports` de `graph.json` (0 desde `domain`/`application` hacia capas externas) | Mantener `lint-imports` en CI **[NO VERIFICADO: no hay pipeline de CI en el repo]** |
 
 ## 5. Riesgos que la dirección debe conocer
 

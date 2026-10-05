@@ -1,9 +1,11 @@
 # 03 · Flujos de datos
 
-> Fuente: hiperaristas `he_composicion_inventario`, `he_motor_dual_paridad`, `he_paso10_postproceso` y comunidades 0, 3, 4, 6 y 7 de `graphify-out/graph.json`.
+> Fuente: hiperaristas `he_composicion_inventario`, `he_motor_dual_paridad`, `he_paso10_postproceso` y comunidades «Composición de inventario», «Ejecución y post-proceso de ventas», «Paso 10 COM de ventas», «Motor dual (VENTAS_MOTOR)», «WhatsApp Web (Selenium)» y «Capturas del informe» de `graphify-out/graph.json`.
 > Rutas expresadas relativas a `BASE_PATH` / `DB_EXPORT_DIR` (nunca rutas absolutas de usuario).
 
 ## 1. Inventario General (`actualizacion_inv`) — migrado
+
+> **Diagrama interactivo** (Archify, verificado contra `088f6f0`): [abrir en el índice](diagramas/main.html#04_inventario) · [abrir aparte](diagramas/03_flujo-inventario.html). El bloque Mermaid de abajo es la versión resumida para leer en GitHub/VS Code.
 
 ```mermaid
 sequenceDiagram
@@ -55,6 +57,8 @@ sequenceDiagram
 
 ## 2. Ventas (`actualizacion_ventas`) — motor dual
 
+> **Diagrama interactivo** (Archify, verificado contra `088f6f0`): [abrir en el índice](diagramas/main.html#05_ventas) · [abrir aparte](diagramas/03_flujo-ventas.html). El bloque Mermaid de abajo es la versión resumida para leer en GitHub/VS Code.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -105,6 +109,8 @@ sequenceDiagram
 
 ## 3. Envío del informe (`envio_informe_ventas`) — legacy
 
+> **Diagrama interactivo** (Archify, verificado contra `088f6f0`): [abrir en el índice](diagramas/main.html#06_envio) · [abrir aparte](diagramas/03_flujo-envio.html). El bloque Mermaid de abajo es la versión resumida para leer en GitHub/VS Code.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -125,7 +131,7 @@ sequenceDiagram
     E->>X: extraer_factor_mg_neto
     E->>X: cierra solo su instancia (PID)
     E->>CD: obtener_chromedriver_path (compatible con Chrome)
-    E->>W: iniciar_sesion() (perfil persistente, 1 reintento con revalidación de driver)
+    E->>W: iniciar_sesion() (perfil persistente, hasta 3 intentos; si fallan, revalida chromedriver y 3 más)
     loop por destinatario
         W->>W: buscar_chat → enviar_texto("Cordial saludo... VTAS «MES» MG NETO PONDERADO «factor»")
         W->>W: enviar_imagen × 4 (Ctrl+V)

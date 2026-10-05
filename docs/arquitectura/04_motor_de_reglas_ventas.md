@@ -1,6 +1,6 @@
 # 04 · Motor de reglas de ventas
 
-> Fuente: comunidad 6 "Motor dual de ventas", hiperarista `he_motor_dual_paridad`, nodos `config_rules_ventas_ven_*` (orden del YAML) y nodos de clase `src_insumos_domain_rules_ventas_*` enlazados por `references` (`registry_id`). Las 21 entradas se enlazan a `TransformarVentas` con aristas `uses` (EXTRACTED).
+> Fuente: comunidades «Motor dual (VENTAS_MOTOR)», «Reglas YAML de ventas» y «Paridad de ventas», hiperarista `he_motor_dual_paridad`, nodos `config_rules_ventas_ven_*` (orden del YAML) y nodos de clase `src_insumos_domain_rules_ventas_*` enlazados por `references` (`registry_id`). Las 21 entradas se enlazan a `TransformarVentas` con aristas `uses` (EXTRACTED).
 
 ## 1. Mecánica
 
@@ -45,15 +45,17 @@ Correspondencia con los pasos del legacy (comentarios del YAML): 1–11 = Paso 2
 
 ## 3. Mecanismo de paridad
 
+> **Diagrama interactivo** (Archify, verificado contra `088f6f0`): [abrir en el índice](diagramas/main.html#07_paridad) · [abrir aparte](diagramas/04_motor-paridad.html). El bloque Mermaid de abajo es la versión resumida para leer en GitHub/VS Code.
+
 ```mermaid
 flowchart LR
-    E["EntradasVentas<br/>(preparar_entradas)"] --> L["_transformar_legacy<br/>(oráculo)"]
-    E --> R["transformar_reglas<br/>→ TransformarVentas"]
-    L --> C{"comparar_por_posicion"}
-    R --> C
-    C -- "vacío" --> OK["PARIDAD TOTAL · exit 0"]
-    C -- "≥ 1 diferencia" --> KO["HAY n DIFERENCIAS · exit 1"]
-    C --> X["Pruebas/COMPARACION_VENTAS_«fecha».xlsx<br/>DIFERENCIAS · ELIMINACIONES · RESUMEN REGLAS · FUENTES"]
+    E["EntradasVentas<br/>(preparar_entradas · mismas entradas)"] --> L["_transformar_legacy<br/>(oráculo)"]
+    E --> R["transformar_reglas<br/>→ TransformarVentas · 21 entradas / 20 reglas"]
+    L -- "actual" --> C{"comparar_por_posicion"}
+    R -- "nuevo" --> C
+    C --> X["Pruebas/COMPARACION_VENTAS_«fecha».xlsx<br/>DIFERENCIAS · ELIMINACIONES · RESUMEN REGLAS · FUENTES<br/>(se escribe siempre)"]
+    X -- "DIFERENCIAS vacía" --> OK["PARIDAD TOTAL · exit 0<br/>→ habilitar VENTAS_MOTOR=reglas"]
+    X -- "≥ 1 diferencia" --> KO["HAY n DIFERENCIAS · exit 1"]
 ```
 
 | Pieza | Qué hace | Evidencia |
@@ -64,11 +66,11 @@ flowchart LR
 | Código de salida | `0` = paridad total; `1` = diferencias | `scripts/comparar_ventas.py` (docstring y `return`) |
 | Selector | `VENTAS_MOTOR` ∈ {`legacy` (defecto), `reglas`}; valor inválido → `legacy` | `tasks/actualizacion_ventas.py:L2171` · `tasks_actualizacion_ventas_actualizacionventas_motor`; `env_ventas_motor` |
 
-**Limitación estructural** (GRAPH_REPORT §3.1): el oráculo y el motor nuevo comparten `normalizar_referencia`, `texto_licitado` y `descuento_a_decimal`. La paridad prueba la **equivalencia del orquestado**, no la corrección de esas tres funciones; su corrección depende de pruebas unitarias con casos aprobados por negocio (`test_normalizar_referencia_es_texto`, `test_texto_licitado`, `test_descuento_a_decimal`).
+**Limitación estructural** (aristas del legacy hacia `insumos.domain` en `graph.json`; ver `tasks_actualizacion_ventas_acoplamiento_dominio`): el oráculo y el motor nuevo comparten `normalizar_referencia`, `texto_licitado` y `descuento_a_decimal`. La paridad prueba la **equivalencia del orquestado**, no la corrección de esas tres funciones; su corrección depende de pruebas unitarias con casos aprobados por negocio (`test_normalizar_referencia_es_texto`, `test_texto_licitado`, `test_descuento_a_decimal`).
 
 ## 4. Criterio de corte legacy → reglas
 
-Criterio documentado (nodo `docs_adr_0009_motor_dual_ventas_criterio_corte_reglas`, ADR 0009 §Decisión 4; README "Pendiente" 1):
+Criterio documentado (nodo `scripts_comparar_ventas_criterio_corte`, ADR 0009 §Decisión 4; README "Pendiente" 1):
 
 | Paso | Condición de salida medible | Responsable |
 |---|---|---|

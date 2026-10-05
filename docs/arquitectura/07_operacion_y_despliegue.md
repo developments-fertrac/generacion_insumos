@@ -1,6 +1,6 @@
 # 07 · Operación y despliegue
 
-> Fuente: nodos `env_*` (extraídos de `.env.example` y de las llamadas `_env`/`os.getenv` del código), `scripts_publicar_a_produccion_ps1`, `core_logger_*`, `core_email_notifier_*`, `docs_documentacion_generacion_de_insumos_orquestacion_n8n` y FAQ del docx (Parte 1 §4).
+> Fuente: nodos `env_*` (extraídos de `.env.example` y de las llamadas `_env`/`os.getenv` del código), `scripts_publicar_a_produccion`, `core_logger_*`, `core_email_notifier_*`, `docs_documentacion_generacion_de_insumos_orquestacion_n8n` y FAQ del docx (Parte 1 §4).
 > Sin valores sensibles. Rutas expresadas como `<BASE_PATH>`, `<DB_EXPORT_DIR>`, `<carpeta de producción>`.
 
 ## 1. Variables de entorno (`.env`)
@@ -55,7 +55,7 @@ Códigos de salida de `run.py`: `0` todo OK, `1` alguna tarea falló (`orchestra
 |---|---|---|
 | Copia de carpetas | `robocopy /E` de `src`, `tasks`, `core`, `config`, `scripts`, `docs\adr`, `tests` (excluye cachés) | `docs\adr` ya no existe en la rama: se omite en silencio (`if (Test-Path $o)`) |
 | Archivos raíz | `run.py`, `orchestrator.py`, `pyproject.toml`, `uv.lock`, `requirements.txt`, `.importlinter`, `.env.example`, `README.md` | **`uv.lock` no existe desde `088f6f0`**: no se copia y el destino conserva un lock antiguo o ninguno (`readme_pendiente_uv_lock`) |
-| Limpieza ADR 0008 | Borra en destino `descarga_*`, `core/browser.py`, `core/erp_navigation.py`, `config/erp_selectors.py` | aristas `references` del script hacia módulos (`scripts_publicar_a_produccion_ps1`) |
+| Limpieza ADR 0008 | Borra en destino `descarga_*`, `core/browser.py`, `core/erp_navigation.py`, `config/erp_selectors.py` | aristas `references` del script hacia módulos (`scripts_publicar_a_produccion`) |
 | Dependencias | `uv sync` en destino | Sin lock, `uv sync` resuelve versiones nuevas (requiere red) |
 | No toca | `.env`, `.venv`, logs, datos | Verificar manualmente `DB_EXPORT_DIR` y `VENTAS_ACTUALIZACION_PASSWORD` en el `.env` de destino |
 
@@ -68,7 +68,7 @@ Flujo documentado (docx Parte 1 §3.3; nodo `docs_documentacion_generacion_de_in
 | Tarea en modo "Solo interactivo" con usuario logueado (bloqueado sirve, desconectado no) | Excel COM y portapapeles requieren escritorio | `readme_sesion_interactiva`; `tasks_envio_informe_ventas_diagnosticar_portapapeles` |
 | `uv` en el `PATH` del usuario de la tarea o `PATH_UV` en el `.bat` | FAQ: "ERROR: no se encontró uv" | `docs_documentacion_generacion_de_insumos_pendiente_bat_sin_uv` |
 | `uv.lock` presente | `--frozen` exige lockfile | `readme_pendiente_uv_lock` |
-| Inventario antes que ventas | Ventas lee el inventario del día | `docs_adr_0008_fuente_base_de_datos_orden_inventario_antes_ventas` |
+| Inventario antes que ventas | Ventas lee el inventario del día | `tasks_actualizacion_ventas_dependencia_inventario` |
 
 Los `.bat` y el flujo de n8n **no están versionados** en este repositorio (solo `test.bat`, diagnóstico de usuario/directorio): **[NO VERIFICADO]** su contenido exacto.
 
@@ -79,7 +79,7 @@ Los `.bat` y el flujo de n8n **no están versionados** en este repositorio (solo
 | Ubicación | `<LOGS_DIR>/<AAAA-MM-DD>/<tarea>.log` (hora Colombia); por defecto `%LOCALAPPDATA%\GeneracionInsumos\logs` | `core/logger.py:L14` · `core_logger_logs_root`; `core/logger.py:L44` · `core_logger_get_logger` |
 | Niveles | Archivo DEBUG, consola INFO | idem |
 | Secretos | `FiltroSecretos` en ambos handlers reemplaza contraseñas por `sha256:<10 hex>` (mensajes y tracebacks) | `core/seguridad.py:L50` · `core_seguridad_filtrosecretos` |
-| Correo | Uno por corrida desde `BaseTask.run`: `[OK]` al terminar todo, `[ERROR]` con traceback y log adjunto | `tasks/base_task.py:L21`; overrides en ventas/envío/inventario |
+| Correo | Uno por ejecución de tarea desde `BaseTask.run` (el workflow `ventas` envía dos): `[OK]` al terminar todo, `[ERROR]` con traceback y log adjunto | `tasks/base_task.py:L21`; overrides en ventas/envío/inventario |
 | Brecha | El cuerpo del correo de fallo de ventas incluye `traceback.format_exc()` **sin pasar por `FiltroSecretos`** (el filtro actúa solo sobre registros de log) | `tasks/actualizacion_ventas.py` (`_notify_failure`, `_ejecutar`) |
 | Indicadores | `PROCESANDO.txt` en `BASE_PATH` durante ventas; `resultado_<tarea>.txt` del `.bat` | `tasks_actualizacion_ventas_actualizacionventas_crear_indicador_progreso` |
 

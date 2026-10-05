@@ -1,6 +1,6 @@
 # 10 · Roadmap
 
-> Fuente: nodos `readme_pendiente_fase_4b`, `readme_pendiente_fase_5`, `readme_pendiente_paridad_real`, pendientes operativos (GRAPH_REPORT §7), ADR 0004/0007/0009 y brechas de `08_calidad_y_pruebas.md`.
+> Fuente: nodos `readme_pendiente_fase_4b`, `readme_pendiente_fase_5`, `readme_pendiente_paridad_real`, pendientes operativos (nodos `*_pendiente_*` del grafo), ADR 0004/0007/0009 y brechas de `08_calidad_y_pruebas.md`.
 > Las fechas objetivo no están definidas en el repositorio **[NO VERIFICADO]**; se proponen horizontes relativos.
 
 ## 0. Higiene operativa (inmediato, prerequisito de todo lo demás)
@@ -32,16 +32,16 @@
 | 4b.2 | Retirar `_transformar_legacy` y la duplicación de licitados | `tasks_actualizacion_ventas_actualizacionventas_transformar_legacy` | Nodo inexistente; `ActualizacionVentas` < 1.000 líneas |
 | 4b.3 | Puerto `EscritorVentas` + adaptador COM para Paso 10 y post-proceso | hiperarista `he_paso10_postproceso` | `tasks/actualizacion_ventas.py` reducido a raíz de composición (como inventario) |
 | 4b.4 | Golden de ventas anonimizado | `tests_golden_readme` | Marcador `golden` con ≥ 1 escenario verde |
-| 4b.5 | Re-apuntar `scripts/comparar_ventas.py` (o retirarlo) | arista a privado (GRAPH_REPORT §3.1) | Sin imports de `tasks/` en `scripts/` |
+| 4b.5 | Re-apuntar `scripts/comparar_ventas.py` (o retirarlo) | arista a privado (`scripts_comparar_ventas_uso_privado`) | Sin imports de `tasks/` en `scripts/` |
 | 4b.6 | Ratchet | `quality_baseline` | Base re-lineada; `scripts/ratchet_types.py` OK |
 
 ## 3. Fase 5 — envío del informe
 
 | # | Actividad | Evidencia | Criterio de salida |
 |---|---|---|---|
-| 5.1 | Puertos `CapturadorInforme` y `Mensajeria`; adaptadores COM/portapapeles y WhatsApp Web en `adapters/notify` | `src_insumos_adapters_notify_init` (vacío); comunidad 4 | `tasks/envio_informe_ventas.py` como raíz de composición; caso de uso `EnviarInforme` en `application/` |
+| 5.1 | Puertos `CapturadorInforme` y `Mensajeria`; adaptadores COM/portapapeles y WhatsApp Web en `adapters/notify` | `src_insumos_adapters_notify_init` (vacío); comunidades «WhatsApp Web (Selenium)» y «Envío: procesos y puertos» | `tasks/envio_informe_ventas.py` como raíz de composición; caso de uso `EnviarInforme` en `application/` |
 | 5.2 | Notificación SMTP como adaptador | `core_email_notifier_emailnotifier` | `core/email_notifier.py` retirado o envuelto; filtro de secretos aplicado al cuerpo (R7) |
-| 5.3 | Mover `chromedriver.exe` al estado operativo | `docs_adr_0006_estado_operativo_fuera_deuda_chromedriver_raiz` | Binario fuera de la raíz del proyecto |
+| 5.3 | Mover `chromedriver.exe` al estado operativo | `core_chromedriver_utils_deuda_chromedriver_raiz` | Binario fuera de la raíz del proyecto |
 | 5.4 | Retirar `mypy-legacy.toml` y el ratchet | ADR 0007 | `quality-baseline.json` en 0 o eliminado |
 | 5.5 | Pruebas de contrato de los nuevos adaptadores | — | `pytest -m contract` cubre puertos de envío |
 
